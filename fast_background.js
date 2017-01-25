@@ -1,10 +1,10 @@
 /**
  * Name:    FastBackground
- * Version: 0.3.1
+ * Version: 0.3.2
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
- * Copyright (c) 2016 Pavel Novojilov
+ * Copyright (c) 2017 Pavel Novojilov
  */
 var fast_background = {
     timeout: null,
@@ -12,7 +12,8 @@ var fast_background = {
     cssobj: null,
     resize_event: true, // Авто обновление при изменении размера окна
     ajax_url: window.location.href,
-    page_unloaded: false,
+    _page_unloaded: false,
+    _fix_old_browsers: false,
     /**
      * Запускает загрузку или обновление изображений
      * @param {Function} [update_callback=null] Обратная функция в случае успешного завершения
@@ -88,7 +89,7 @@ var fast_background = {
             var p_post_ajax = function (query_object, callback_function, error_callback) {
                 var obj = $.post(fast_background.ajax_url.replace(window.location.hash, ""), query_object,
                     function (data) {
-                        if (fast_background.page_unloaded)
+                        if (fast_background._page_unloaded)
                             return;
 
                         var check = "<->ajax_complete<->";
@@ -106,7 +107,7 @@ var fast_background = {
                             callback_function(data);
                     })
                     .fail(function (xhr, status, error) {
-                        if (fast_background.page_unloaded)
+                        if (fast_background._page_unloaded)
                             return;
                         if (error_callback)
                             error_callback("ERROR POST AJAX: <div style='white-space: pre-wrap; word-wrap:break-word;'>" + window.location.href + " " + ($.toJSON ? $.toJSON(query_object) : "") +
@@ -212,6 +213,15 @@ var fast_background = {
                             var is_already_important = fast_background.cssobj.obj[selector][type] && fast_background.cssobj.obj[selector][type].indexOf(" !important") !== -1;
                             fast_background.cssobj.obj[selector][type] = 'url(' + url + ')' + (is_already_important ? " !important" : "");
                             fast_background.cssobj.update();
+                            if (!is_already_important) {
+                                if (!fast_background._fix_old_browsers && $(selector).css('background-image') == 'none')
+                                    fast_background._fix_old_browsers = true;
+                                if (fast_background._fix_old_browsers) {
+                                    fast_background.cssobj.obj[selector].backgroundImage = 'url(' + url + ')';
+                                    fast_background.cssobj.update();
+                                }
+                            }
+                            console.log(selector + " " + fast_background.cssobj.obj[selector][type]);
                             break;
                         case fast_background.types.img_src:
                             img_obj.attr(type, url);
@@ -268,7 +278,9 @@ var fast_background = {
                     var l_key = 'fast_background_cached_url_' + url;
                     localStorage.setItem(l_key, curl);
                 }
+
                 loader_img(curl, function () {
+
                     set_f(curl, img_obj, fb_selector);
                 }, function () {
                     remove_f(img_obj, fb_selector);
@@ -454,7 +466,7 @@ var fast_background = {
 };
 $(function () {
     $(window).on('beforeunload.fast_background', function (e) {
-        fast_background.page_unloaded = true;
+        fast_background._page_unloaded = true;
     });
     var save_w_width = $(window).width();
     $(window).resize(function () {
