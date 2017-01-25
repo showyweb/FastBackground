@@ -3,7 +3,7 @@ Fast Background - это интеллектуальный JavaScript загру�
 # Необходимое  ПО
  - [PHP => 5.5](http://php.net/) 
  - [jQuery => 2.X](https://jquery.com/)
- - [CSSOBJ  => 0.7.2](https://github.com/cssobj/cssobj#cssobj-)
+ - [CSSOBJ  => 1.1.2](https://github.com/cssobj/cssobj#cssobj-)
  
 # Использование
 ```html
