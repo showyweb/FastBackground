@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 0.3.2
+ * Version: 0.3.3
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -32,6 +32,7 @@ var fast_background = {
                 fast_background.timeout = setTimeout(arguments.callee.bind(this, update_callback), fast_background.timeout_size);
                 return;
             }
+            fast_background._page_unloaded = false;
             if (typeof SW_BS === "undefined") {
                 //Используется портативная минимальная библиотека BROWSERS SCANNER JS (http://showyweb.ru/js/browsers_scanner.js), если основная не загружена
                 SW_BS = {
@@ -98,7 +99,7 @@ var fast_background = {
                             if (error_callback)
                                 error_callback(data);
                             else
-                                alert("ERROR POST AJAX: " + data);
+                                console.log("ERROR POST AJAX: " + data);
                             callback_function(null);
                             return;
                         }
@@ -113,7 +114,7 @@ var fast_background = {
                             error_callback("ERROR POST AJAX: <div style='white-space: pre-wrap; word-wrap:break-word;'>" + window.location.href + " " + ($.toJSON ? $.toJSON(query_object) : "") +
                                 "</div><br>ERROR TEXT: " + error);
                         else
-                            alert("ERROR POST AJAX: " + error);
+                            console.log("ERROR POST AJAX: " + error);
                         callback_function(null);
                     });
             };
@@ -221,7 +222,7 @@ var fast_background = {
                                     fast_background.cssobj.update();
                                 }
                             }
-                            console.log(selector + " " + fast_background.cssobj.obj[selector][type]);
+                            // console.log(selector + " " + fast_background.cssobj.obj[selector][type]);
                             break;
                         case fast_background.types.img_src:
                             img_obj.attr(type, url);
