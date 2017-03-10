@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 0.3.3
+ * Version: 0.3.4
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -10,6 +10,9 @@ var fast_background = {
     timeout: null,
     timeout_size: 0,
     cssobj: null,
+    get_selector_hook: function (jq_element) {
+        return null;
+    },
     resize_event: true, // Авто обновление при изменении размера окна
     ajax_url: window.location.href,
     _page_unloaded: false,
@@ -190,11 +193,14 @@ var fast_background = {
             var images = $('.fast_background').toArray();
             if (images.length < 1 && update_callback)
                 update_callback();
-            var get_l_id = function (img_obj) {
-                var l_id = img_obj.attr('id');
-                if (l_id)
-                    l_id = "#" + l_id;
-                else {
+            var get_l_id = function (img_obj, is_class_sel) {
+                var l_id = fast_background.get_selector_hook(img_obj, is_class_sel);
+                if (!l_id) {
+                    l_id = img_obj.attr('id');
+                    if (l_id)
+                        l_id = "#" + l_id;
+                }
+                if (!l_id) {
                     l_id = img_obj.is('body') ? 'fb_body' : 'fb_' + Math.random().toString(36).substr(2, 9);
                     img_obj.attr('id', l_id);
                     l_id = "#" + l_id;
@@ -299,7 +305,7 @@ var fast_background = {
                         for (var selector_prefix in urls) {
                             if (!urls.hasOwnProperty(selector_prefix)) continue;
                             var c_url = urls[selector_prefix];
-                            var l_id = get_l_id(img_obj_);
+                            var l_id = get_l_id(img_obj_, true);
                             fb_selector = l_id + " " + selector_prefix;
                             var c_img_obj = $(fb_selector);
                             if (c_img_obj.length > 0)
@@ -423,10 +429,10 @@ var fast_background = {
                     height += 150;// Для повышения четкости изображения при отображении в браузере
 
                     if (!force_reload_image) {
-                        var tmp_width = parseInt(img_obj_.data('tmp_width'));
+                        var tmp_width = parseInt(img_obj_.data('tmp_width' + (is_fb_class ? "_c" : "")));
                         if (!tmp_width)
                             tmp_width = 0;
-                        var tmp_height = parseInt(img_obj_.data('tmp_height'));
+                        var tmp_height = parseInt(img_obj_.data('tmp_height' + (is_fb_class ? "_c" : "")));
                         if (!tmp_height)
                             tmp_height = 0;
                         //console.log("cover "+cover_size+' tmp_size '+ tmp_size+' size '+size+' url '+img_obj.attr('data-url'));
@@ -442,12 +448,12 @@ var fast_background = {
                         }
 
                         if (width > tmp_width)
-                            img_obj_.data('tmp_width', width);
+                            img_obj_.data('tmp_width' + (is_fb_class ? "_c" : ""), width);
                         else
                             width = tmp_width;
 
                         if (height > tmp_height)
-                            img_obj_.data('tmp_height', height);
+                            img_obj_.data('tmp_height' + (is_fb_class ? "_c" : ""), height);
                         else
                             height = tmp_height;
                     }
