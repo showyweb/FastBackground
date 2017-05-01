@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 0.3.4
+ * Version: 0.3.5
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -28,7 +28,7 @@ var fast_background = {
             return;
 
         clearTimeout(fast_background.timeout);
-        fast_background.timeout = setTimeout(function (callback) {
+        fast_background.timeout = setTimeout(function () {
             if (fast_background.timeout_size == 0)
                 fast_background.timeout_size = 1000;
             if (fast_background.ajax_is_work > 0) {
@@ -235,7 +235,7 @@ var fast_background = {
                             requestAnimFrame(function () {
                                 var w_width_ = $(window).width();
                                 var width_ = img_obj.width();
-                                if (width_ > w_width_ || (SW_BS.browser.isMobile.anyPhone && width_ < 10)) {
+                                if ((w_width_ > 500 && width_ > w_width_) || (SW_BS.browser.isMobile.anyPhone && width_ < 10)) {
                                     img_obj.css('width', '100%');
                                 }
                             }, img_obj[0]);
