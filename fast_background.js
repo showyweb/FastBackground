@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 0.3.5
+ * Version: 0.5.0
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -10,8 +10,8 @@ var fast_background = {
     timeout: null,
     timeout_size: 0,
     cssobj: null,
-    get_selector_hook: function (jq_element) {
-        return null;
+    prepare_selector_hook: function (selector) {
+        return selector;
     },
     resize_event: true, // Авто обновление при изменении размера окна
     ajax_url: window.location.href,
@@ -193,18 +193,21 @@ var fast_background = {
             var images = $('.fast_background').toArray();
             if (images.length < 1 && update_callback)
                 update_callback();
-            var get_l_id = function (img_obj, is_class_sel) {
-                var l_id = fast_background.get_selector_hook(img_obj, is_class_sel);
-                if (!l_id) {
-                    l_id = img_obj.attr('id');
+            var get_l_id = function (img_obj, selector_prefix) {
+                   var l_id = img_obj.attr('id');
                     if (l_id)
                         l_id = "#" + l_id;
-                }
+
                 if (!l_id) {
                     l_id = img_obj.is('body') ? 'fb_body' : 'fb_' + Math.random().toString(36).substr(2, 9);
                     img_obj.attr('id', l_id);
                     l_id = "#" + l_id;
                 }
+                if(selector_prefix){
+                    var is_pseudo = selector_prefix.indexOf(":") === 0;
+                    l_id = l_id + (is_pseudo ? "" : " ") + selector_prefix;
+                }
+                l_id = fast_background.prepare_selector_hook(l_id);
                 return l_id;
             };
             var set_f = function (url, img_obj, fb_selector) {
@@ -305,8 +308,7 @@ var fast_background = {
                         for (var selector_prefix in urls) {
                             if (!urls.hasOwnProperty(selector_prefix)) continue;
                             var c_url = urls[selector_prefix];
-                            var l_id = get_l_id(img_obj_, true);
-                            fb_selector = l_id + " " + selector_prefix;
+                            fb_selector = get_l_id(img_obj_, selector_prefix);
                             var c_img_obj = $(fb_selector);
                             if (c_img_obj.length > 0)
                                 c_img_obj = c_img_obj.eq(0);
@@ -367,7 +369,7 @@ var fast_background = {
                     }
 
                     if (img_obj_.length == 0)
-                        img_obj_ = $(fb_selector.split(" ")[0]);
+                        img_obj_ = $(fb_selector.replace(/(\:| ).*$/ig, ""));
 
                     var cover_size = "false";
                     var auto_size_type = img_obj_.is('img') ? "contain" : img_obj_.css('background-size');
