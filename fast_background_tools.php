@@ -1,4 +1,5 @@
 <?php
+
 abstract class fast_background_JPEG_QUALITY
 {
     const HIGHEST = 100;
@@ -260,7 +261,9 @@ class fast_background_tools
         }
         try {
             $this->save_to_text_file($lock_file, '', null);
-        } catch (Throwable | Exception $e) {
+        } catch (Throwable $e) {
+            unlink($lock_file);
+        } catch (Exception $e) {
             unlink($lock_file);
         }
         $filename = null;
@@ -291,7 +294,9 @@ class fast_background_tools
             $exif = null;
             try {
                 $exif = @read_exif_data($filename);
-            } catch (Throwable | Exception $ex) {
+            } catch (Throwable  $ex) {
+
+            } catch (Exception $ex) {
 
             }
 
@@ -414,7 +419,11 @@ class fast_background_tools
                 imagedestroy($im);
             if(isset($img))
                 imagedestroy($img);
-        } catch (Throwable | Exception $e) {
+        } catch (Throwable  $e) {
+            if(file_exists($filename))
+                unlink($filename);
+            $this->error($e->getMessage());
+        } catch (Exception $e) {
             if(file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());

@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 0.5.0
+ * Version: 0.6.0
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -15,6 +15,7 @@ var fast_background = {
     },
     resize_event: true, // Авто обновление при изменении размера окна
     ajax_url: window.location.href,
+    max_stream: 5,
     _page_unloaded: false,
     _fix_old_browsers: false,
     /**
@@ -26,6 +27,7 @@ var fast_background = {
     update: function (update_callback, error_callback, force_reload_image) {
         if (window.location.host.indexOf('yandex.net') != -1) //Отключить для Yandex Webvisor
             return;
+        var important_selectors = [];
 
         clearTimeout(fast_background.timeout);
         fast_background.timeout = setTimeout(function () {
@@ -160,14 +162,22 @@ var fast_background = {
                 }
             };
 
+            var loader_img_work_streams = 0;
             var loader_img = function (url, callback, err_callback) {
+                if (loader_img_work_streams > fast_background.max_stream) {
+                    setTimeout(arguments.callee.bind(this, url, callback, err_callback), 100);
+                    return;
+                }
+                loader_img_work_streams++;
                 // console.log("loader_img "+url);
                 var img = new Image();
                 img.onload = function () {
+                    loader_img_work_streams--;
                     if (callback)
                         callback();
                 };
                 img.onerror = function (e) {
+                    loader_img_work_streams--;
                     e.preventDefault();
                     e.stopPropagation();
                     if (err_callback)
@@ -194,16 +204,16 @@ var fast_background = {
             if (images.length < 1 && update_callback)
                 update_callback();
             var get_l_id = function (img_obj, selector_prefix) {
-                   var l_id = img_obj.attr('id');
-                    if (l_id)
-                        l_id = "#" + l_id;
+                var l_id = img_obj.attr('id');
+                if (l_id)
+                    l_id = "#" + l_id;
 
                 if (!l_id) {
                     l_id = img_obj.is('body') ? 'fb_body' : 'fb_' + Math.random().toString(36).substr(2, 9);
                     img_obj.attr('id', l_id);
                     l_id = "#" + l_id;
                 }
-                if(selector_prefix){
+                if (selector_prefix) {
                     var is_pseudo = selector_prefix.indexOf(":") === 0;
                     l_id = l_id + (is_pseudo ? "" : " ") + selector_prefix;
                 }
@@ -221,6 +231,8 @@ var fast_background = {
                             if (typeof fast_background.cssobj.obj[selector] == "undefined")
                                 fast_background.cssobj.obj[selector] = {};
                             var is_already_important = fast_background.cssobj.obj[selector][type] && fast_background.cssobj.obj[selector][type].indexOf(" !important") !== -1;
+                            if (!is_already_important && important_selectors.indexOf(selector) !== -1)
+                                is_already_important = true;
                             fast_background.cssobj.obj[selector][type] = 'url(' + url + ')' + (is_already_important ? " !important" : "");
                             fast_background.cssobj.update();
                             if (!is_already_important) {
@@ -262,11 +274,13 @@ var fast_background = {
                 var type = img_obj.is('img') ? fast_background.types.img_src : fast_background.types.b_url;
                 switch (type) {
                     case fast_background.types.b_url:
-                        var selector = (fb_selector ? fb_selector : "#" + img_obj.attr('id'));
+                        var selector = fb_selector;
+                        if (!selector)
+                            selector = get_l_id(img_obj);
                         if (typeof fast_background.cssobj.obj[selector] == "undefined")
                             fast_background.cssobj.obj[selector] = {};
-                        var is_already_important = fast_background.cssobj.obj[selector][type] && fast_background.cssobj.obj[selector][type].indexOf(" !important") !== -1;
-                        fast_background.cssobj.obj[selector][type] = 'none' + (is_already_important ? " !important" : "");
+                        else
+                            delete fast_background.cssobj.obj[selector][type];
                         fast_background.cssobj.update();
                         break;
                     case fast_background.types.img_src:
@@ -309,7 +323,7 @@ var fast_background = {
                             if (!urls.hasOwnProperty(selector_prefix)) continue;
                             var c_url = urls[selector_prefix];
                             fb_selector = get_l_id(img_obj_, selector_prefix);
-                            var c_img_obj = $(fb_selector);
+                            var c_img_obj = $(fb_selector.replace(":hover", "").replace(":active", "").replace(":focus", ""));
                             if (c_img_obj.length > 0)
                                 c_img_obj = c_img_obj.eq(0);
                             images.push({
@@ -342,16 +356,15 @@ var fast_background = {
 
                     var type = img_obj_.is('img') ? fast_background.types.img_src : fast_background.types.b_url;
 
-
                     if (type == fast_background.types.b_url) {
                         var selector = fb_selector;
                         if (!selector)
                             selector = get_l_id(img_obj_);
                         if (typeof fast_background.cssobj.obj[selector] == "undefined" || typeof fast_background.cssobj.obj[selector][type] == "undefined") {
                             fast_background.cssobj.obj[selector] = {};
-                            fast_background.cssobj.obj[selector][type] = {};
                             var is_already_important = url.indexOf(" !important") !== -1;
-                            fast_background.cssobj.obj[selector][type] = 'none' + (is_already_important ? " !important" : "");
+                            if (is_already_important)
+                                important_selectors.push(selector);
                         }
                         url = url.replace(" !important", "");
                     }
@@ -465,6 +478,8 @@ var fast_background = {
                     if (is_fb_class && fb_class.length == 0)
                         img_obj_ = fb_class;
                     p_post_ajax({'fast_background': 'get_cached_url', 'web_url': url, 'cover_size': cover_size, 'cont_size': cont_size, 'other_size': fast_background.is_init ? "false" : 'true'}, function (data) {
+                        // if (fb_selector && fb_selector.indexOf(".video_thumb:active .is_active_") !== -1)
+                        //     console.log('');
                         ajax_callback(url, data, img_obj_, fb_selector);
                     }, error_callback);
                 })(img_obj);

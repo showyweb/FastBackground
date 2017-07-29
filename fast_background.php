@@ -81,7 +81,8 @@ class fast_background extends fast_background_tools
         if($files_count < 1)
             try {
                 rmdir($path);
-            } catch (Throwable | Exception $e) {
+            } catch (Throwable  $e) {
+            } catch (Exception $e) {
             }
         return $files_count;
     }
