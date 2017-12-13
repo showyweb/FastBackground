@@ -422,10 +422,12 @@ class fast_background_tools
         } catch (Throwable  $e) {
             if(file_exists($filename))
                 unlink($filename);
+//            exit($e->getMessage());
             $this->error($e->getMessage());
         } catch (Exception $e) {
             if(file_exists($filename))
                 unlink($filename);
+//            exit($e->getMessage());
             $this->error($e->getMessage());
         } finally {
             if(file_exists($lock_file))

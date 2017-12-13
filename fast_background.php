@@ -24,7 +24,9 @@ class fast_background extends fast_background_tools
         if(!$disable_request_commands)
             switch ($this->get_request('fast_background')) {
                 case 'get_cached_url':
-                    $url = $this->get_request('web_url');
+                    $url = $this->get_request('web_url', false);
+                    $url = preg_replace("/https?\:\/\/" . $this->xss_filter($_SERVER['HTTP_HOST']) . "/u", "", $url);
+                    $url = $this->xss_filter($url);
                     $cover_size = $this->to_boolean($this->get_request('cover_size'));
                     $cont_size = $this->get_request('cont_size');
                     $cont_size = explode("x", $cont_size);
@@ -49,7 +51,7 @@ class fast_background extends fast_background_tools
 
     private function clear_cache_job($path = null, $time_filter)
     {
-        $path_cache = $path_cache = $this->root_path . "/" . $this->path_cache_;;
+        $path_cache = $path_cache = $this->root_path . "/" . $this->path_cache_;
         $cur_time = time();
         if(is_null($path)) {
             ini_set('max_execution_time', 0);
@@ -92,7 +94,7 @@ class fast_background extends fast_background_tools
      * @param bool $cover_size Рассчитать минимальный размер изображения таким образом, чтобы оно заполнило контейнер, если false, то чтобы вместилось.
      * @param int $cont_width Ширина контейнера в пикселях.
      * @param int $cont_height Высота контейнера в пикселях.
-     * @param bool $def_size Вернуть изображение по умолчанию для первоначальной быстрой загрузки. Изображение по умолчанию формируется при полном отсутствии его в кэше. (Для ПК максимальный размер одной из сторон равен 1000 пикс., для мобильных устройств 500 пикс., частный размер может быть меньше если при формировании размеры контейнера меньше этих ограничений. При обновлении страницы в клиентском браузере, такое изображение уже не запрашивается, так как будет использоваться кэш браузера).
+     * @param bool $def_size Вернуть изображение по умолчанию для первоначальной быстрой загрузки, если нужного нет в кэше. Изображение по умолчанию формируется при полном отсутствии его в кэше. (Для ПК максимальный размер одной из сторон равен 1000 пикс., для мобильных устройств 500 пикс., частный размер может быть меньше если при формировании размеры контейнера меньше этих ограничений. При обновлении страницы в клиентском браузере, такое изображение уже не запрашивается, так как будет использоваться кэш браузера).
      * @param int $size_limit Максимальный размер одной из сторон изображения для хранения в кэше.
      * @return null|string
      */
@@ -105,6 +107,7 @@ class fast_background extends fast_background_tools
         $filename = $this->root_path . "/" . $filename;
         if(!file_exists($filename))
             return null;
+        $filemtime_filename = filemtime($filename);
         $cont_width = intval($cont_width);
         $cont_height = intval($cont_height);
         $cover_size = boolval($cover_size);
@@ -145,18 +148,18 @@ class fast_background extends fast_background_tools
                 break;
         }
 
-        $cache_img_name = sha1($web_url) . "_";
+        $cache_img_name = sha1($web_url.$filemtime_filename) . "_";
         $sub_dir = substr($cache_img_name, 0, 1);
         $sub_dir2 = substr($cache_img_name, 0, 2);
         $path_cache = $this->root_path . "/" . $this->path_cache_;
         if(!is_dir($path_cache))
-            mkdir($path_cache);
+            mkdir($path_cache,0770);
         $path_cache = $this->root_path . "/" . $this->path_cache_ . "/" . $sub_dir;
         if(!is_dir($path_cache))
-            mkdir($path_cache);
+            mkdir($path_cache,0770);
         $path_cache = $this->root_path . "/" . $this->path_cache_ . "/" . $sub_dir . "/" . $sub_dir2;
         if(!is_dir($path_cache))
-            mkdir($path_cache);
+            mkdir($path_cache,0770);
         $cache_img_name_ = $cache_img_name;
         $cache_img_name .= ($size) . $text_type;
         $web_path_cache = $this->path_cache_ . "/" . $sub_dir . "/" . $sub_dir2;
@@ -165,27 +168,29 @@ class fast_background extends fast_background_tools
         $img_default_path = $this->root_path . "/" . $web_url_img_default_path;
         $cache_filename_ = $path_cache . '/' . $cache_img_name_;
         $cache_filename = $path_cache . '/' . $cache_img_name;
-        if(!file_exists($filename))
-            return null;
-        $filemtime_filename = filemtime($filename);
+
+
         $default_min_size = $this->is_mobile_device() ? 500 : 1000;
 
-        if($def_size and file_exists($img_default_path))
-            return $web_url_img_default_path;
+        $skip_zone_size = 10;
+        $skip_zone_start = $size - ($size % $skip_zone_size);
+        $link_start_file_name = $cache_filename_ . $skip_zone_start . '.txt';
+        $is_cache_filename_reset = !file_exists($link_start_file_name) or !file_exists($this->root_path . "/" . $this->open_txt_file($link_start_file_name, null));
 
-        if(!file_exists($cache_filename) or filemtime($cache_filename) < $filemtime_filename or !file_exists($img_default_path) or filemtime($img_default_path) < $filemtime_filename) {
-            if(!file_exists($img_default_path) or filemtime($img_default_path) < $filemtime_filename) {
+        if($is_cache_filename_reset) {
+            if($def_size and file_exists($img_default_path))
+                return $web_url_img_default_path;
+            if(!file_exists($img_default_path)) {
                 copy($filename, $img_default_path);
+                chmod($img_default_path,0660);
                 $this->compressing_img((($size < $default_min_size) ? $size : $default_min_size), $web_url_img_default_path, null, fast_background_JPEG_QUALITY::MEDIUM);
             }
 
-            $skip_zone_size = 10;
-            $skip_zone_start = $size - ($size % $skip_zone_size);
-            $link_start_file_name = $cache_filename_ . $skip_zone_start . '.txt';
-
-            if(!file_exists($link_start_file_name) or filemtime($link_start_file_name) < $filemtime_filename or !file_exists($this->root_path . "/" . $this->open_txt_file($link_start_file_name, null))) {
+            if($is_cache_filename_reset) {
                 copy($filename, $cache_filename);
+                chmod($cache_filename,0660);
                 $this->save_to_text_file($link_start_file_name, $web_url_cache_img, null);
+                chmod($link_start_file_name,0660);
                 $this->compressing_img($size, $web_url_cache_img, null, fast_background_JPEG_QUALITY::HIGH);
             } else
                 $web_url_cache_img = $this->open_txt_file($link_start_file_name, null);
