@@ -20,7 +20,10 @@ Fast Background - это интеллектуальный JavaScript загру�
     <div class="class_block1 fast_background"></div>
     <div class="class_block1 fast_background" data-url="img/block2.jpg !important"></div>
     <div class="fast_background" data-url="img/block3.jpg"></div>
-    <script>fast_background.update();</script>
+    <script>
+     fast_background.ajax_url = "/FastBackground/index.php";
+     fast_background.update();
+    </script>
   </body>
 </html>
 ```
