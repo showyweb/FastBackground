@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 0.7.0
+ * Version: 0.7.3
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -312,8 +312,8 @@ var fast_background = {
                             selector = get_l_id(img_obj);
                         if (typeof fast_background.cssobj.obj[selector] == "undefined")
                             return "";
-
-                        return fast_background.cssobj.obj[selector][type].replace(/url\(['"]?|['"]?\)/g, "");
+                        var r=fast_background.cssobj.obj[selector][type];
+                        return r ? r.replace(/url\(['"]?|['"]?\)/g, "") : "";
                         break;
                     case fast_background.types.img_src:
                         return img_obj.attr(type);

@@ -46,7 +46,8 @@ class fast_background extends fast_background_tools
      */
     function clear_cache($time_filter = 24 * 60 * 60)
     {
-        $this->clear_cache_job(null, $time_filter);
+        if($this->clear_cache_job(null, $time_filter) !== -1)
+            clearstatcache(true);
     }
 
     private function clear_cache_job($path = null, $time_filter)
@@ -57,7 +58,7 @@ class fast_background extends fast_background_tools
             ini_set('max_execution_time', 0);
             $time_lock_path = $path_cache . '/time_lock';
             if(file_exists($time_lock_path) && bcsub($cur_time, filemtime($time_lock_path)) < $time_filter)
-                return 1;
+                return -1;
             $this->save_to_text_file($time_lock_path, '', null);
         }
 
@@ -148,18 +149,18 @@ class fast_background extends fast_background_tools
                 break;
         }
 
-        $cache_img_name = sha1($web_url.$filemtime_filename) . "_";
+        $cache_img_name = sha1($web_url . $filemtime_filename) . "_";
         $sub_dir = substr($cache_img_name, 0, 1);
         $sub_dir2 = substr($cache_img_name, 0, 2);
         $path_cache = $this->root_path . "/" . $this->path_cache_;
         if(!is_dir($path_cache))
-            mkdir($path_cache,0770);
+            mkdir($path_cache, 0770);
         $path_cache = $this->root_path . "/" . $this->path_cache_ . "/" . $sub_dir;
         if(!is_dir($path_cache))
-            mkdir($path_cache,0770);
+            mkdir($path_cache, 0770);
         $path_cache = $this->root_path . "/" . $this->path_cache_ . "/" . $sub_dir . "/" . $sub_dir2;
         if(!is_dir($path_cache))
-            mkdir($path_cache,0770);
+            mkdir($path_cache, 0770);
         $cache_img_name_ = $cache_img_name;
         $cache_img_name .= ($size) . $text_type;
         $web_path_cache = $this->path_cache_ . "/" . $sub_dir . "/" . $sub_dir2;
@@ -177,24 +178,32 @@ class fast_background extends fast_background_tools
         $link_start_file_name = $cache_filename_ . $skip_zone_start . '.txt';
         $is_cache_filename_reset = !file_exists($link_start_file_name) or !file_exists($this->root_path . "/" . $this->open_txt_file($link_start_file_name, null));
 
-        if($is_cache_filename_reset) {
+
+
             if($def_size and file_exists($img_default_path))
                 return $web_url_img_default_path;
             if(!file_exists($img_default_path)) {
                 copy($filename, $img_default_path);
-                chmod($img_default_path,0660);
+                chmod($img_default_path, 0660);
                 $this->compressing_img((($size < $default_min_size) ? $size : $default_min_size), $web_url_img_default_path, null, fast_background_JPEG_QUALITY::MEDIUM);
             }
 
             if($is_cache_filename_reset) {
                 copy($filename, $cache_filename);
-                chmod($cache_filename,0660);
+                chmod($cache_filename, 0660);
                 $this->save_to_text_file($link_start_file_name, $web_url_cache_img, null);
-                chmod($link_start_file_name,0660);
+                chmod($link_start_file_name, 0660);
                 $this->compressing_img($size, $web_url_cache_img, null, fast_background_JPEG_QUALITY::HIGH);
             } else
                 $web_url_cache_img = $this->open_txt_file($link_start_file_name, null);
-        }
+//            $exist = file_exists($this->root_path . "/" . $web_url_cache_img);
+//            if($this->get_request('is_debug'))
+//                echo $exist ? "true" : 'false' . "<br>$link_start_file_name<br>";
+//            if(!$exist) {
+//                unlink($link_start_file_name);
+//                return $this->get_url($web_url, $cover_size, $cont_width, $cont_height, $def_size, $size_limit);
+//            }
+
         return $web_url_cache_img;
     }
 }
