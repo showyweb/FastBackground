@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 0.7.3
+ * Version: 0.7.4
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -79,6 +79,7 @@ var fast_background = {
                         return false;
                     return (navigator.userAgent.match(/iphone|ipod/i) ? true : false) || (browser.isMobile.Android && (navigator.userAgent.match(/mobile/i) ? true : false)) || (browser.isMobile.BlackBerry && !(navigator.userAgent.match(/tablet/i) ? true : false)) || browser.isMobile.Windows;
                 })();
+
                 $('head').append('<style id="SW_BS" type="text/css"> .SW_BS_is_retina {display: none; opacity: 0; } @media only screen and (-Webkit-min-device-pixel-ratio: 1.5), only screen and (-moz-min-device-pixel-ratio: 1.5), only screen and (-o-min-device-pixel-ratio: 3 / 2), only screen and (min-device-pixel-ratio: 1.5), only screen and (-webkit-min-device-pixel-ratio: 3) {.SW_BS_is_retina {opacity: 1; }} ' + '</style>');
                 browser.isRetinaDisplay = (function () {
                     if (typeof $ == "undefined")
@@ -190,6 +191,8 @@ var fast_background = {
                         err_callback();
                     return false;
                 };
+                if (url.indexOf('!important') !== -1)
+                    debugger;
                 img.src = url;
             };
 
@@ -312,7 +315,7 @@ var fast_background = {
                             selector = get_l_id(img_obj);
                         if (typeof fast_background.cssobj.obj[selector] == "undefined")
                             return "";
-                        var r=fast_background.cssobj.obj[selector][type];
+                        var r = fast_background.cssobj.obj[selector][type];
                         return r ? r.replace(/url\(['"]?|['"]?\)/g, "") : "";
                         break;
                     case fast_background.types.img_src:
@@ -334,17 +337,7 @@ var fast_background = {
             };
 
 
-            var ajax_callback = function (url, curl, img_obj, fb_selector, cached_key, xf) {
-
-                // var width = img_obj.width();
-                // var height = img_obj.height();
-                // var tmp_width = parseInt(img_obj.data('tmp_width' + (fb_selector ? "_c" : "")));
-                // if (!tmp_width)
-                //     tmp_width = 0;
-                // var tmp_height = parseInt(img_obj.data('tmp_height' + (fb_selector ? "_c" : "")));
-                // if (!tmp_height)
-                //     tmp_height = 0;
-
+            var ajax_callback = function (url, curl, img_obj, fb_selector, fb_tmp_attr_p, cached_key, xf) {
                 loader_img(curl, function (i_w, i_h) {
                     // if(xf)
                     //     console.log('');
@@ -352,8 +345,10 @@ var fast_background = {
                         if (curl.indexOf("default_") === -1)
                             localStorage.setItem(cached_key, curl);
                         else {
-                            img_obj.removeData('tmp_width' + (fb_selector ? "_c" : ""));
-                            img_obj.removeData('tmp_height' + (fb_selector ? "_c" : ""));
+                            var na_tmp_width = 'tmp_width' + (fb_selector ? "_c_" + fb_tmp_attr_p : "");
+                            var na_tmp_height = 'tmp_height' + (fb_selector ? "_c_" + fb_tmp_attr_p : "");
+                            img_obj.removeData(na_tmp_width);
+                            img_obj.removeData(na_tmp_height);
                         }
                     }
                     set_f(curl, img_obj, fb_selector);
@@ -369,6 +364,7 @@ var fast_background = {
                 var img_obj = !images[i].is_fb_class ? $(images[i]) : images[i];
                 (function (img_obj_) {
                     var fb_selector = null;
+                    var fb_tmp_attr_p = null;
                     if (!img_obj_.is_fb_class && p_data_dyn_img_urls.all_exist(img_obj_)) {
                         var urls = p_data_dyn_img_urls.get_all(img_obj_);
                         for (var selector_prefix in urls) {
@@ -403,8 +399,10 @@ var fast_background = {
                         fb_class = img_obj.first_elem;
                         url = img_obj_.url;
                         fb_selector = img_obj_.fb_selector;
+                        fb_tmp_attr_p = fb_selector ? fb_selector.replace(/ |>|\*|\(|\)|\+|\@/gi, "_") : "";
                         img_obj_ = img_obj_.first_elem;
                     }
+
 
                     var type = img_obj_.is('img') ? fast_background.types.img_src : fast_background.types.b_url;
 
@@ -428,13 +426,10 @@ var fast_background = {
                     var width = img_obj_.width();
                     var height = img_obj_.height();
                     var cached_key = get_cached_key(img_obj_, url, width, height);
-                    // SW_BS.browser.isLocalStorageSupported = false;
                     if (SW_BS.browser.isLocalStorageSupported && !force_reload_image) {
                         save_c_url = localStorage.getItem(cached_key);
                         if (save_c_url) {
-                            // img_obj_.data('tmp_width' + (is_fb_class ? "_c" : ""), width);
-                            // img_obj_.data('tmp_height' + (is_fb_class ? "_c" : ""), height);
-                            ajax_callback(url, save_c_url, img_obj_, fb_selector, cached_key);
+                            ajax_callback(url, save_c_url, img_obj_, fb_selector, fb_tmp_attr_p, cached_key);
                             return;
                         }
                     }
@@ -501,31 +496,33 @@ var fast_background = {
                     height += 150;// Для повышения четкости изображения при отображении в браузере
 
                     if (!force_reload_image) {
-                        var tmp_width = parseInt(img_obj_.data('tmp_width' + (is_fb_class ? "_c" : "")));
+                        var na_tmp_width = 'tmp_width' + (is_fb_class ? "_c_" + fb_tmp_attr_p : "");
+                        var na_tmp_height = 'tmp_height' + (is_fb_class ? "_c_" + fb_tmp_attr_p : "");
+                        var tmp_width = parseInt(img_obj_.data(na_tmp_width));
                         if (!tmp_width)
                             tmp_width = 0;
-                        var tmp_height = parseInt(img_obj_.data('tmp_height' + (is_fb_class ? "_c" : "")));
+                        var tmp_height = parseInt(img_obj_.data(na_tmp_height));
                         if (!tmp_height)
                             tmp_height = 0;
                         //console.log("cover "+cover_size+' tmp_size '+ tmp_size+' size '+size+' url '+img_obj.attr('data-url'));
 
                         if (width <= tmp_width && height <= tmp_height) {
                             save_c_url = get_f(img_obj_, fb_selector);
-                            ajax_callback(url, save_c_url, img_obj_, fb_selector, cached_key);
+                            save_c_url = save_c_url.replace(" !important", "");
+                            ajax_callback(url, save_c_url, img_obj_, fb_selector, fb_tmp_attr_p, cached_key);
                             return;
                         }
 
                         if (width > tmp_width)
-                            img_obj_.data('tmp_width' + (is_fb_class ? "_c" : ""), width);
+                            img_obj_.data(na_tmp_width, width);
                         else
                             width = tmp_width;
 
                         if (height > tmp_height)
-                            img_obj_.data('tmp_height' + (is_fb_class ? "_c" : ""), height);
+                            img_obj_.data(na_tmp_height, height);
                         else
                             height = tmp_height;
                     }
-
                     var cont_size = width + "x" + height;
 
                     if (is_fb_class && fb_class.length == 0)
@@ -535,7 +532,7 @@ var fast_background = {
                     p_post_ajax({'fast_background': 'get_cached_url', 'web_url': url, 'cover_size': cover_size, 'cont_size': cont_size, 'other_size': fast_background.is_init || type === fast_background.types.img_src ? "false" : 'true'}, function (data) {
                         // if (fb_selector && fb_selector.indexOf(".video_thumb:active .is_active_") !== -1)
                         //     console.log('');
-                        ajax_callback(url, data, img_obj_, fb_selector, cached_key, true);
+                        ajax_callback(url, data, img_obj_, fb_selector, fb_tmp_attr_p, cached_key, true);
                     }, error_callback);
                 })(img_obj);
             }
