@@ -179,8 +179,7 @@ class fast_background extends fast_background_tools
         $is_cache_filename_reset = !file_exists($link_start_file_name) or !file_exists($this->root_path . "/" . $this->open_txt_file($link_start_file_name, null));
 
 
-        if($def_size and file_exists($img_default_path))
-            return $web_url_img_default_path;
+
         if(!file_exists($img_default_path)) {
             copy($filename, $img_default_path);
             chmod($img_default_path, 0660);
@@ -188,6 +187,8 @@ class fast_background extends fast_background_tools
         }
 
         if($is_cache_filename_reset) {
+            if($def_size and file_exists($img_default_path))
+                return $web_url_img_default_path;
             copy($filename, $cache_filename);
             chmod($cache_filename, 0660);
             $this->save_to_text_file($link_start_file_name, $web_url_cache_img, null);
@@ -195,13 +196,13 @@ class fast_background extends fast_background_tools
             $this->compressing_img($size, $web_url_cache_img, null, fast_background_JPEG_QUALITY::HIGH);
         } else
             $web_url_cache_img = $this->open_txt_file($link_start_file_name, null);
-        //            $exist = file_exists($this->root_path . "/" . $web_url_cache_img);
-        //            if($this->get_request('is_debug'))
-        //                echo $exist ? "true" : 'false' . "<br>$link_start_file_name<br>";
-        //            if(!$exist) {
-        //                unlink($link_start_file_name);
-        //                return $this->get_url($web_url, $cover_size, $cont_width, $cont_height, $def_size, $size_limit);
-        //            }
+        /*$exist = file_exists($this->root_path . "/" . $web_url_cache_img);
+        if($this->get_request('is_debug'))
+            echo $exist ? "true" : 'false' . "<br>$link_start_file_name<br>";
+        if(!$exist) {
+           unlink($link_start_file_name);
+            return $this->get_url($web_url, $cover_size, $cont_width, $cont_height, $def_size, $size_limit);
+        }*/
 
         return $web_url_cache_img;
     }

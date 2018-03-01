@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 0.7.4
+ * Version: 1.0.0
  * Author:  Novojilov Pavel Andreevich
  * Support: http://SHOWYWEB.ru
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -15,7 +15,8 @@ var fast_background = {
     },
     resize_event: true, // Авто обновление при изменении размера окна
     ajax_url: window.location.href,
-    max_stream: 5,
+    max_img_load_stream: 5,
+    max_ajax_post_stream:1,
     _page_unloaded: false,
     _fix_old_browsers: false,
     /**
@@ -94,9 +95,16 @@ var fast_background = {
                 })();
             }
 
+            var p_post_ajax_work_streams = 0;
             var p_post_ajax = function (query_object, callback_function, error_callback) {
+                if (p_post_ajax_work_streams > fast_background.max_ajax_post_stream) {
+                    setTimeout(arguments.callee.bind(this, query_object, callback_function, error_callback), 100);
+                    return;
+                }
+                p_post_ajax_work_streams++;
                 var obj = $.post(fast_background.ajax_url.replace(window.location.hash, ""), query_object,
                     function (data) {
+                        p_post_ajax_work_streams--;
                         if (fast_background._page_unloaded)
                             return;
 
@@ -115,6 +123,7 @@ var fast_background = {
                             callback_function(data);
                     })
                     .fail(function (xhr, status, error) {
+                        p_post_ajax_work_streams--;
                         if (fast_background._page_unloaded)
                             return;
                         if (error_callback)
@@ -166,7 +175,7 @@ var fast_background = {
 
             var loader_img_work_streams = 0;
             var loader_img = function (url, callback, err_callback) {
-                if (loader_img_work_streams > fast_background.max_stream) {
+                if (loader_img_work_streams > fast_background.max_img_load_stream) {
                     setTimeout(arguments.callee.bind(this, url, callback, err_callback), 100);
                     return;
                 }
@@ -438,7 +447,7 @@ var fast_background = {
                         img_obj_ = $(fb_selector.replace(/(\:| ).*$/ig, ""));
 
                     var cover_size = "false";
-                    var auto_size_type = img_obj_.is('img') ? "contain" : img_obj_.css('background-size');
+                    var auto_size_type = img_obj_.is('img') ? "cover" : img_obj_.css('background-size');
                     if (is_fb_class && fb_class.length == 0)
                         auto_size_type = 'contain';
                     if (auto_size_type == "cover")
@@ -527,8 +536,6 @@ var fast_background = {
 
                     if (is_fb_class && fb_class.length == 0)
                         img_obj_ = fb_class;
-                    if (url === "/download/kat.png")
-                        console.log('');
                     p_post_ajax({'fast_background': 'get_cached_url', 'web_url': url, 'cover_size': cover_size, 'cont_size': cont_size, 'other_size': fast_background.is_init || type === fast_background.types.img_src ? "false" : 'true'}, function (data) {
                         // if (fb_selector && fb_selector.indexOf(".video_thumb:active .is_active_") !== -1)
                         //     console.log('');
