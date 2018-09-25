@@ -6,38 +6,69 @@ class fast_background extends fast_background_tools
 {
     /**
      * fast_background constructor проверяет наличие запросов POST и формирует кэш изображений на стороне сервера.
-     * С помощью cron и curl вы можете отправить запрос GET для очистки кэша http://site*.ru/fast_background.php?time_filter=3600
      * Этот запрос отчистит кэш на сервере удалив изображения старше 1 часа. (Очистка кэша может не запустится если в директории кэша
      * имеется файл блокировки который младше значения time_filter)
      * @param string $relative_path_for_cache [optional] Относительный путь до директории кэша изображений, файлы в директории должны иметь публичный доступ для скачивания.
      * @param null $root_path [optional] Корневой каталог сайта.
      * @param bool $disable_request_commands [optional] Не проверять наличие GET и POST запросов.
      */
-    function __construct($relative_path_for_cache = ".fast_background", $root_path = null, $disable_request_commands = false)
+    function __construct($relative_path_for_cache = ".fast_background", $root_path = null)
     {
         $this->root_path = is_null($root_path) ? getcwd() : $root_path;
         $this->path_cache_ = $relative_path_for_cache;
         $path_cache = $this->root_path . "/" . $this->path_cache_;
         if(!is_dir($path_cache))
             mkdir($path_cache);
+    }
 
-        if(!$disable_request_commands)
-            switch ($this->get_request('fast_background')) {
-                case 'get_cached_url':
-                    $url = $this->get_request('web_url', false);
+    /** Запускает очистку кэша на сервере, удаляя изображения старше значения $time_filter. (Очистка кэша может не запустится если в директории кэша
+     * имеется файл блокировки который младше значения $time_filter)
+     * @param int $time_filter [optional] Значение в секундах.
+     */
+
+    function request_proc()
+    {
+        switch ($this->get_request('fast_background')) {
+            case 'get_cached_url':
+                session_write_close();
+                $url = $this->get_request('web_url', false);
+                $url = preg_replace("/https?\:\/\/" . $this->xss_filter($_SERVER['HTTP_HOST']) . "/u", "", $url);
+                $url = $this->xss_filter($url);
+                $cover_size = $this->to_boolean($this->get_request('cover_size'));
+                $cont_size = $this->get_request('cont_size');
+                $cont_size = explode("x", $cont_size);
+                $other_size = $this->to_boolean($this->get_request('other_size'));
+                $cached_url = $this->get_url($url, $cover_size, $cont_size[0], $cont_size[1], $other_size);
+                exit($cached_url . '<->ajax_complete<->');
+                break;
+            case 'get_cached_urls':
+                session_write_close();
+                $urls = $this->get_request('web_url', false);
+                $cover_sizes = $this->get_request('cover_size');
+                $cont_sizes = $this->get_request('cont_size');
+                $other_sizes = $this->get_request('other_size');
+                $cached_urls = "";
+                $urls = explode("\n", $urls);
+                $cover_sizes = explode("\n", $cover_sizes);
+                $cont_sizes = explode("\n", $cont_sizes);
+                $other_sizes = explode("\n", $other_sizes);
+                $len = count($urls);
+                for ($i = 0; $i < $len; $i++) {
+                    $url = $urls[$i];
+                    $cover_size = $cover_sizes[$i];
+                    $cont_size = $cont_sizes[$i];
+                    $other_size = $other_sizes[$i];
                     $url = preg_replace("/https?\:\/\/" . $this->xss_filter($_SERVER['HTTP_HOST']) . "/u", "", $url);
                     $url = $this->xss_filter($url);
-                    $cover_size = $this->to_boolean($this->get_request('cover_size'));
-                    $cont_size = $this->get_request('cont_size');
+                    $cover_size = $this->to_boolean($cover_size);
                     $cont_size = explode("x", $cont_size);
-                    $other_size = $this->to_boolean($this->get_request('other_size'));
+                    $other_size = $this->to_boolean($other_size);
                     $cached_url = $this->get_url($url, $cover_size, $cont_size[0], $cont_size[1], $other_size);
-                    exit($cached_url . '<->ajax_complete<->');
-                    break;
-                case 'clear_cache_job':
-                    $this->clear_cache(intval($this->get_request('time_filter')));
-                    break;
-            }
+                    $cached_urls .= $cached_url . "\n";
+                }
+                exit($cached_urls . '<->ajax_complete<->');
+                break;
+        }
     }
 
     /** Запускает очистку кэша на сервере, удаляя изображения старше значения $time_filter. (Очистка кэша может не запустится если в директории кэша
@@ -46,11 +77,11 @@ class fast_background extends fast_background_tools
      */
     function clear_cache($time_filter = 24 * 60 * 60)
     {
-        if($this->clear_cache_job(null, $time_filter) !== -1)
+        if($this->clear_cache_job($time_filter) !== -1)
             clearstatcache(true);
     }
 
-    private function clear_cache_job($path = null, $time_filter)
+    private function clear_cache_job($time_filter, $path = null)
     {
         $path_cache = $path_cache = $this->root_path . "/" . $this->path_cache_;
         $cur_time = time();
@@ -70,7 +101,7 @@ class fast_background extends fast_background_tools
             if($file != "." && $file != "..") {
                 $files_count++;
                 if(is_dir($path . $file))
-                    $files_count = $this->clear_cache_job($path . $file . "/", $time_filter);
+                    $files_count = $this->clear_cache_job($time_filter, $path . $file . "/");
                 else {
                     if(bcsub($cur_time, filemtime($path . $file)) > $time_filter) {
                         $files_count--;
@@ -177,7 +208,6 @@ class fast_background extends fast_background_tools
         $skip_zone_start = $size - ($size % $skip_zone_size);
         $link_start_file_name = $cache_filename_ . $skip_zone_start . '.txt';
         $is_cache_filename_reset = !file_exists($link_start_file_name) or !file_exists($this->root_path . "/" . $this->open_txt_file($link_start_file_name, null));
-
 
 
         if(!file_exists($img_default_path)) {
