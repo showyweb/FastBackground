@@ -21,6 +21,18 @@ class fast_background extends fast_background_tools
             mkdir($path_cache);
     }
 
+    private function prepare_vars(&$web_url, &$cover_size, &$cont_size, &$other_size)
+    {
+        $url = $web_url;
+        $url = preg_replace("/https?\:\/\/" . $this->xss_filter($_SERVER['HTTP_HOST']) . "/u", "", $url);
+        $web_url = $this->xss_filter($url);
+        $cover_size = $this->to_boolean($cover_size);
+        $cont_size = explode("x", $cont_size);
+        $cont_size[0] = intval($cont_size[0]);
+        $cont_size[1] = intval($cont_size[1]);
+        $other_size = $this->to_boolean($other_size);
+    }
+
     /** Запускает очистку кэша на сервере, удаляя изображения старше значения $time_filter. (Очистка кэша может не запустится если в директории кэша
      * имеется файл блокировки который младше значения $time_filter)
      * @param int $time_filter [optional] Значение в секундах.
@@ -32,39 +44,34 @@ class fast_background extends fast_background_tools
             case 'get_cached_url':
                 session_write_close();
                 $url = $this->get_request('web_url', false);
-                $url = preg_replace("/https?\:\/\/" . $this->xss_filter($_SERVER['HTTP_HOST']) . "/u", "", $url);
-                $url = $this->xss_filter($url);
-                $cover_size = $this->to_boolean($this->get_request('cover_size'));
+                $cover_size = $this->get_request('cover_size');
                 $cont_size = $this->get_request('cont_size');
-                $cont_size = explode("x", $cont_size);
-                $other_size = $this->to_boolean($this->get_request('other_size'));
+                $other_size = $this->get_request('other_size');
+                $this->prepare_vars($url, $cover_size, $cont_size, $other_size);
                 $cached_url = $this->get_url($url, $cover_size, $cont_size[0], $cont_size[1], $other_size);
                 exit($cached_url . '<->ajax_complete<->');
                 break;
             case 'get_cached_urls':
                 session_write_close();
                 $urls = $this->get_request('web_url', false);
-                $cover_sizes = $this->get_request('cover_size');
-                $cont_sizes = $this->get_request('cont_size');
-                $other_sizes = $this->get_request('other_size');
+                $cover_sizes = $this->get_request('cover_size', false);
+                $cont_sizes = $this->get_request('cont_size', false);
+                $other_sizes = $this->get_request('other_size', false);
                 $cached_urls = "";
                 $urls = explode("\n", $urls);
                 $cover_sizes = explode("\n", $cover_sizes);
                 $cont_sizes = explode("\n", $cont_sizes);
                 $other_sizes = explode("\n", $other_sizes);
-                $len = count($urls);
+                $len = count($urls)-1;
                 for ($i = 0; $i < $len; $i++) {
                     $url = $urls[$i];
                     $cover_size = $cover_sizes[$i];
                     $cont_size = $cont_sizes[$i];
                     $other_size = $other_sizes[$i];
-                    $url = preg_replace("/https?\:\/\/" . $this->xss_filter($_SERVER['HTTP_HOST']) . "/u", "", $url);
-                    $url = $this->xss_filter($url);
-                    $cover_size = $this->to_boolean($cover_size);
-                    $cont_size = explode("x", $cont_size);
-                    $other_size = $this->to_boolean($other_size);
+                    $this->prepare_vars($url, $cover_size, $cont_size, $other_size);
                     $cached_url = $this->get_url($url, $cover_size, $cont_size[0], $cont_size[1], $other_size);
                     $cached_urls .= $cached_url . "\n";
+                    unset($url, $cover_size, $cont_size, $other_size);
                 }
                 exit($cached_urls . '<->ajax_complete<->');
                 break;
@@ -73,9 +80,9 @@ class fast_background extends fast_background_tools
 
     /** Запускает очистку кэша на сервере, удаляя изображения старше значения $time_filter. (Очистка кэша может не запустится если в директории кэша
      * имеется файл блокировки который младше значения $time_filter)
-     * @param int $time_filter [optional] Значение в секундах.
+     * @param int $time_filter [optional] Значение в секундах. По умолчанию 30 дней.
      */
-    function clear_cache($time_filter = 24 * 60 * 60)
+    function clear_cache($time_filter = 30 * 24 * 60 * 60)
     {
         if($this->clear_cache_job($time_filter) !== -1)
             clearstatcache(true);

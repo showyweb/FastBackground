@@ -1,13 +1,13 @@
 /**
  * Name:    FastBackground
- * Version: 1.3.0
+ * Version: 1.3.3
  * Author:  Novojilov Pavel Andreevich
  * Support: https://github.com/showyweb/FastBackground
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
  * Copyright (c) 2017 Pavel Novojilov
  */
 var fast_background = {
-    timeout: null,
+    _timeout: null,
     timeout_size: 0,
     cssobj: null,
     prepare_selector_hook: function (selector) {
@@ -21,6 +21,11 @@ var fast_background = {
     _ajax_is_work: 0,
     _p_post_ajax_work_streams: 0,
     _last_update_callbacks: [],
+    _types: {b_url: 'background-image', img_src: 'src'},
+    is_init: false,
+    ajax_is_work: 0,
+    _only_w_loaded: false,
+
     /**
      * Запускает загрузку или обновление изображений
      * @param {Function} [update_callback=null] Обратная функция в случае успешного завершения
@@ -120,7 +125,10 @@ var fast_background = {
             fb._ajax_is_work--;
             if (fb._ajax_is_work < 1) {
                 if (!fb.is_init) {
-                    fb.is_init = true;
+                    if (!fb._only_w_loaded)
+                        fb._only_w_loaded = true;
+                    else
+                        fb.is_init = true;
                     fb.update();
                 } else if (update_callback || fb._last_update_callbacks.length) {
                     if (update_callback)
@@ -134,10 +142,10 @@ var fast_background = {
         }
 
         function set_f(url, img_obj, fb_selector) {
-            var type = img_obj.is('img') ? fb.types.img_src : fb.types.b_url;
+            var type = img_obj.is('img') ? fb._types.img_src : fb._types.b_url;
             try {
                 switch (type) {
-                    case fb.types.b_url:
+                    case fb._types.b_url:
                         var selector = fb_selector;
                         if (!selector)
                             selector = get_l_id(img_obj);
@@ -158,7 +166,7 @@ var fast_background = {
                         }
                         // console.log(selector + " " + fast_background.cssobj.obj[selector][type]);
                         break;
-                    case fb.types.img_src:
+                    case fb._types.img_src:
                         img_obj.attr(type, url);
                         requestAnimFrame(function () {
                             var w_width_ = $(window).width();
@@ -177,9 +185,9 @@ var fast_background = {
         }
 
         function remove_f(img_obj, fb_selector) {
-            var type = img_obj.is('img') ? fb.types.img_src : fb.types.b_url;
+            var type = img_obj.is('img') ? fb._types.img_src : fb._types.b_url;
             switch (type) {
-                case fb.types.b_url:
+                case fb._types.b_url:
                     var selector = fb_selector;
                     if (!selector)
                         selector = get_l_id(img_obj);
@@ -187,16 +195,16 @@ var fast_background = {
                         fb.cssobj.obj[selector] = {};
                     fb.cssobj.update();
                     break;
-                case fb.types.img_src:
+                case fb._types.img_src:
                     break;
             }
             ajax_work_minus();
         }
 
         function get_f(img_obj, fb_selector) {
-            var type = img_obj.is('img') ? fb.types.img_src : fb.types.b_url;
+            var type = img_obj.is('img') ? fb._types.img_src : fb._types.b_url;
             switch (type) {
-                case fb.types.b_url:
+                case fb._types.b_url:
                     var selector = fb_selector;
                     if (!selector)
                         selector = get_l_id(img_obj);
@@ -205,7 +213,7 @@ var fast_background = {
                     var r = fb.cssobj.obj[selector][type];
                     return r ? r.replace(/url\(['"]?|['"]?\)/g, "") : "";
                     break;
-                case fb.types.img_src:
+                case fb._types.img_src:
                     return img_obj.attr(type);
                     break;
             }
@@ -240,6 +248,15 @@ var fast_background = {
                 localStorage.removeItem(cached_key);
                 remove_f(img_obj, fb_selector);
             });
+        }
+
+        function for_load_push(img_obj) {
+            if (!fb._only_w_loaded) {
+                var jq_el = !img_obj.is_fb_class ? img_obj : img_obj.first_elem;
+                if (jq_el.offset().top > window_h)
+                    return;
+            }
+            imgs_for_load.push(img_obj);
         }
 
         var requestAnimFrame = (function () {
@@ -291,7 +308,9 @@ var fast_background = {
             }
         };
         var $ = jQuery,
-            fb = fast_background;
+            fb = fast_background,
+            imgs_for_load = [],
+            window_h = $(window).height();
         if (typeof SW_BS === "undefined") {
             //Используется портативная минимальная библиотека BROWSERS SCANNER JS (http://showyweb.ru/js/browsers_scanner.js), если основная не загружена
             SW_BS = {
@@ -357,8 +376,8 @@ var fast_background = {
         if (fb._ajax_is_work > 0) {
             if (update_callback)
                 fb._last_update_callbacks.push(update_callback);
-            clearTimeout(fb.timeout);
-            fb.timeout = setTimeout(arguments.callee.bind(this, null, error_callback), fb.timeout_size);
+            clearTimeout(fb._timeout);
+            fb._timeout = setTimeout(arguments.callee.bind(this, null, error_callback), fb.timeout_size);
             return;
         }
         fb._page_unloaded = false;
@@ -370,13 +389,14 @@ var fast_background = {
         if (images.length < 1 && update_callback)
             update_callback();
 
-        var imgs_for_load = [];
 
         var img_obj, i;
         for (i = 0; i < images.length; i++) {
             img_obj = !images[i].is_fb_class ? $(images[i]) : images[i];
             (function (img_obj_) {
-                imgs_for_load.push(img_obj_);
+                for_load_push(img_obj_);
+            })(img_obj);
+            (function (img_obj_) {
                 var fb_selector = null;
                 if (!img_obj_.is_fb_class && p_data_dyn_img_urls.all_exist(img_obj_)) {
                     var urls = p_data_dyn_img_urls.get_all(img_obj_);
@@ -387,7 +407,7 @@ var fast_background = {
                         var c_img_obj = $(fb_selector.replace(":hover", "").replace(":active", "").replace(":focus", ""));
                         if (c_img_obj.length > 0)
                             c_img_obj = c_img_obj.eq(0);
-                        imgs_for_load.push({
+                        for_load_push({
                             is_fb_class: true,
                             first_elem: c_img_obj,
                             url: c_url,
@@ -399,6 +419,8 @@ var fast_background = {
         }
 
         fb._ajax_is_work = imgs_for_load.length;
+
+        var postponed = [];
 
         for (i = 0; i < imgs_for_load.length; i++) {
             img_obj = !imgs_for_load[i].is_fb_class ? $(imgs_for_load[i]) : imgs_for_load[i];
@@ -424,9 +446,9 @@ var fast_background = {
                     img_obj_ = img_obj_.first_elem;
                 }
 
-                var type = img_obj_.is('img') ? fb.types.img_src : fb.types.b_url;
+                var type = img_obj_.is('img') ? fb._types.img_src : fb._types.b_url;
 
-                if (type === fb.types.b_url) {
+                if (type === fb._types.b_url) {
                     var selector = fb_selector;
                     if (!selector)
                         selector = get_l_id(img_obj_);
@@ -439,7 +461,7 @@ var fast_background = {
                     url = url.replace(" !important", "");
                 }
 
-                if (type === fb.types.img_src && !img_obj_.attr('src'))
+                if (type === fb._types.img_src && !img_obj_.attr('src'))
                     img_obj_.attr('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQYV2NgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=');
 
                 var save_c_url = null;
@@ -475,7 +497,7 @@ var fast_background = {
                     var height_is_auto = false;
                     if (math_res != null) {
                         var c_obj = img_obj_;
-                        if (type === fb.types.img_src)
+                        if (type === fb._types.img_src)
                             c_obj = img_obj_.parent();
 
                         if (math_res[3].toLowerCase() !== 'auto') {
@@ -545,18 +567,50 @@ var fast_background = {
 
                 if (is_fb_class && fb_class.length === 0)
                     img_obj_ = fb_class;
-                p_post_ajax({'fast_background': 'get_cached_url', 'web_url': url, 'cover_size': cover_size, 'cont_size': cont_size, 'other_size': fb.is_init || type === fb.types.img_src ? "false" : 'true'}, function (data) {
-                    // if (fb_selector && fb_selector.indexOf(".video_thumb:active .is_active_") !== -1)
-                    //     console.log('');
-                    ajax_callback(url, data, img_obj_, fb_selector, fb_tmp_attr_p, cached_key, true);
-                }, error_callback);
+                if (!fb.is_init) {
+                    postponed.push({
+                        img_obj_: img_obj_,
+                        fb_selector: fb_selector,
+                        fb_tmp_attr_p: fb_tmp_attr_p,
+                        cached_key: cached_key,
+                        web_url: url,
+                        cover_size: cover_size,
+                        cont_size: cont_size,
+                        other_size: fb.is_init || type === fb._types.img_src ? "false" : 'true'
+                    });
+                }
+                else
+                    p_post_ajax({'fast_background': 'get_cached_url', 'web_url': url, 'cover_size': cover_size, 'cont_size': cont_size, 'other_size': fb.is_init || type === fb._types.img_src ? "false" : 'true'}, function (data) {
+                        // if (fb_selector && fb_selector.indexOf(".video_thumb:active .is_active_") !== -1)
+                        //     console.log('');
+                        ajax_callback(url, data, img_obj_, fb_selector, fb_tmp_attr_p, cached_key);
+                    }, error_callback);
             })(img_obj);
         }
 
-    },
-    types: {b_url: 'background-image', img_src: 'src'},
-    is_init: false,
-    ajax_is_work: 0
+        if (!fb.is_init) {
+            var send_d = {
+                web_url: '',
+                cover_size: '',
+                cont_size: '',
+                other_size: ''
+            };
+            var for_f = function (j, key) {
+                send_d[key] += postponed[j][key] + "\n";
+            };
+            for (var j = 0; j < postponed.length; j++)
+                for (var key in send_d) {
+                    if (!send_d.hasOwnProperty(key)) continue;
+                    for_f(j, key);
+                }
+            send_d.fast_background = "get_cached_urls";
+            p_post_ajax(send_d, function (data) {
+                data = data.split('\n');
+                for (var j = 0; j < postponed.length; j++)
+                    ajax_callback(postponed[j].url, data[j], postponed[j].img_obj_, postponed[j].fb_selector, postponed[j].fb_tmp_attr_p, postponed[j].cached_key);
+            }, error_callback);
+        }
+    }
 };
 (function () {
     var $ = jQuery;

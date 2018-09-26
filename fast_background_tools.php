@@ -288,6 +288,7 @@ class fast_background_tools
                 exec($exec_command, $output, $return_var);
                 if($return_var != 0)
                     $this->error("Ошибка сжатия файла $filename с помощью imagemagick");
+                sleep(1);
                 $imgInfo = getimagesize($filename);
                 list($width, $height) = $imgInfo;
             }
