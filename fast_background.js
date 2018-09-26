@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 1.3.3
+ * Version: 1.3.4
  * Author:  Novojilov Pavel Andreevich
  * Support: https://github.com/showyweb/FastBackground
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -253,7 +253,8 @@ var fast_background = {
         function for_load_push(img_obj) {
             if (!fb._only_w_loaded) {
                 var jq_el = !img_obj.is_fb_class ? img_obj : img_obj.first_elem;
-                if (jq_el.offset().top > window_h)
+                var offset = jq_el.offset();
+                if (offset && offset.top > window_h)
                     return;
             }
             imgs_for_load.push(img_obj);
