@@ -25,7 +25,7 @@ class fast_background extends fast_background_tools
     {
         $url = $web_url;
         $url = preg_replace("/https?\:\/\/" . $this->xss_filter($_SERVER['HTTP_HOST']) . "/u", "", $url);
-        $web_url = $this->xss_filter($url);
+        $web_url = $url;
         $cover_size = $this->to_boolean($cover_size);
         $cont_size = explode("x", $cont_size);
         $cont_size[0] = intval($cont_size[0]);
@@ -141,7 +141,7 @@ class fast_background extends fast_background_tools
     {
         if($web_url == "" || $cont_width == 0 || $cont_width == null || $cont_height == 0 || $cont_height == null)
             return null;
-        $web_url = $this->xss_filter($web_url);
+        $web_url = str_replace("..", "", $web_url);
         $filename = $web_url;
         $filename = $this->root_path . "/" . $filename;
         if(!file_exists($filename))
