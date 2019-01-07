@@ -1,0 +1,54 @@
+{
+  "name": "cssobj",
+  "version": "1.2.3",
+  "description": "Runtime CSS manager, Turn CSS into dynamic JS module, Stylesheet CRUD (Create, Read, Update, Delete) in CSSOM, Solve common problems of CSS-in-JS, name space (local) class names",
+  "keywords": [
+    "cssinjs",
+    "css-in-js",
+    "css in js",
+    "cssom",
+    "auto-prefixer",
+    "css generate",
+    "diff css",
+    "css modules"
+  ],
+  "main": "dist/cssobj.cjs.js",
+  "browser": "dist/cssobj.umd.js",
+  "jsnext:main": "dist/cssobj.es.js",
+  "files": [
+    "dist",
+    "docs",
+    "*.md",
+    "*.ts",
+    "*.json"
+  ],
+  "scripts": {
+    "pretest": "npm run build",
+    "test": "cd test && mocha",
+    "lint": "standard ./lib",
+    "report": "cd dist && gzip < cssobj.min.js > cssobj.min.gz && ls -lh && rm -f *.gz",
+    "build": "git rev-parse HEAD > .commithash && rollup -c && uglifyjs dist/cssobj.umd.js -cm -o dist/cssobj.min.js",
+    "make": "gulp bump && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cssobj/cssobj.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cssobj/cssobj/issues"
+  },
+  "homepage": "https://github.com/cssobj/cssobj#readme",
+  "author": "James Yang <jamesyang999@gmail.com>",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "chai": "*",
+    "cssobj-plugin-default-unit": "*",
+    "gulp": "*",
+    "gulp-bump": "*",
+    "mocha": "*",
+    "rollup-plugin-replace": "*",
+    "rollup-watch": "*",
+    "walk": "*"
+  }
+}
