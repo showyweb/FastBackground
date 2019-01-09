@@ -1,6 +1,6 @@
 /**
  * Name:    FastBackground
- * Version: 3.1.3
+ * Version: 3.1.4
  * Author:  Novojilov Pavel Andreevich (The founder of the library)
  * Support: https://github.com/showyweb/FastBackground
  * License: MIT license. http://www.opensource.org/licenses/mit-license.php
@@ -202,8 +202,11 @@ var fast_background = null;
                         fb_selector = img_obj_.fb_selector;
                         fb_tmp_attr_p = fb_selector ? fb_selector.replace(/ |>|\*|\(|\)|\+|\@/gi, "_") : "";
                         img_obj_ = img_obj_.first_elem;
+                        if(!img_obj_) {
+                            fb.ajax_is_work--;
+                            return;
                     }
-
+                    }
 
                     var o_url = url ? url.split(':') : [null];
                     url = o_url[0];
