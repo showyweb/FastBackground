@@ -1,59 +1,124 @@
 /**
- * Name:    FastBackground
- * Version: 3.1.4
- * Author:  Novojilov Pavel Andreevich (The founder of the library)
- * Support: https://github.com/showyweb/FastBackground
- * License: MIT license. http://www.opensource.org/licenses/mit-license.php
- * Copyright (c) 2017 Pavel Novojilov
+ * @overview FastBackground https://github.com/showyweb/FastBackground
+ * @version 5.2.6
+ * @author  Novojilov Pavel Andreevich (The founder of the library)
+ * @license MIT license. http://www.opensource.org/licenses/mit-license.php
+ * @copyright (c) 2017 Pavel Novojilov
  */
-var fast_background = null;
+
 (function () {
     if (window.location.host.indexOf('yandex.net') !== -1) //Отключить для Yandex Webvisor
         return;
+    /**
+     * @name fast_background
+     * @namespace
+     * @global
+     * */
+    var fb = {
+        /**Авто обновление при изменении размера окна
+         * @type boolean
+         * @default true
+         * @inner
+         * */
+        resize_event: true,
 
-    var uc_skip = false;
-    fast_background = {
-        resize_event: true, // Авто обновление при изменении размера окна
+        /**Адрес php скрипта в котором будет вызываться fast_background::request_proc()
+         * @type string
+         * @default window.location.href
+         * @inner
+         * */
         ajax_url: window.location.href,
-        max_ajax_post_stream: 8, //Количество максимально одновременных ajax соединений
-        ajax_is_work: 0, //(только для чтения) Количество оставшихся в очереди ajax вызовов, получающие информацию о изображениях
-        update_is_worked: false, //(только для чтения) true, если функция fast_background.update() в процессе выполнения
-        stage_loaded: -1, //(только для чтения) Этап загрузчика
-        timeout_size: 0,
-        cssobj: null, //Можно указать свой объект cssobj
-        img_types: { //Поддерживаемые форматы
-            jpg: 2,
-            png: 3,
-            webp: 18
-        },
+
+        /**Количество максимально одновременных ajax соединений
+         * @type number
+         * @default 8
+         * @inner
+         * */
+        max_ajax_post_stream: 8,
+
+        /**Количество оставшихся в очереди ajax вызовов, получающие информацию о изображениях
+         * @type number
+         * @readonly
+         * @inner
+         * */
+        ajax_is_work: 0,
+
+        /**true, если функция fast_background.update() в процессе выполнения
+         * @type boolean
+         * @readonly
+         * @inner
+         * */
+        update_is_worked: false,
+
+        /**Этап загрузчика
+         * @type number
+         * @readonly
+         * @inner
+         * */
+        stage_loaded: -1,
+
+        /**Тайм-аут для автоповтора fast_background.update, в том случае когда предыдущий запуск обновления ещё не завершился
+         * @type number
+         * @default 50
+         * @inner
+         * */
+        timeout_size: 50,
+
+        /**Объект cssobj(https://github.com/cssobj/cssobj). Можно указать свой объект cssobj
+         * @type Object|null
+         * @inner
+         * */
+        cssobj: null,
         is_debug_pws: false,
-        use_local_storage: true, //Использовать localStorage для кэширования
+
+        /**Использовать localStorage для кэширования
+         * @type boolean
+         * @default true
+         * @inner
+         * */
+        use_local_storage: true,
+
+        /**Регулярное выражение или строка для очистки (replace(clear_urls_pattern, '')) ссылок указанных в data-url
+         * @type string|RegExp
+         * @inner
+         * */
+        clear_urls_pattern: '',
+
+        /** Пользовательская функция для дополнительной обработки CSS селекторов, которые позже будут использоваться в cssobj для элементов fast_background
+         * @param selector {string} CSS селектор
+         * @return {string}
+         * */
         prepare_selector_hook: function (selector) {
             return selector;
         },
+
         /**
          * Запускает загрузку или обновление изображений
          *
          *  У DOM элементов c картинками должен быть указан класс fast_background и атрибут data-url(ссылка на картинку) или data-urls (ссылки json в виде:
          *  "дочерний селектор":"ссылка на картинку", ...)
          *
-         *  В конец ссылок можно добавить модификаторы:
+         *  **В конец ссылок можно добавить модификаторы**:
+         *  ```
          *   !important - работает также как в CSS, пробел перед знаком ! обязателен;
          *  :png,:jpg,:webp - переопределение конечного формата;
+         * ```
          *
-         *  Также можно указать следующие классы для настройки:
+         *  **Также можно указать следующие классы для настройки**:
+         *  ```
          *  fb_dynamic_url - указывает, что ссылка может меняться. С учетом этого, если вызвать fast_background.update(), то загрузчик это проверит;
          *  fb_ignore_io - не использовать intersectionObserver для элемента;
-         *  fb_ev_img_load - Вызвать jQuery событие fb_ev_img_load при загрузке картинки для элемента;
-         *
-         * @param {Function} [update_callback=null] Обратная функция в случае успешного завершения
-         * @param {function(string)} [error_callback=null] Обратная функция в случае ошибки, возвращает сообщение.
-         * @param {Boolean} [force_reload_image=false] По умолчанию изображения загружаются только если их нет в кэше браузера и загружено достаточно большое изображение, этот параметр позволяет игнорировать такие проверки.
+         *  fb_ev_img_load - Вызвать jQuery событие fb_ev_img_load при загрузке картинки для элемента ( img_obj.trigger('fb_ev_img_load', [url]) );
+         *  fb_ev_img_cache_url - Вызвать jQuery событие fb_ev_img_cache_url при получении адреса картинки в кэше для элемента ( img_obj.trigger('fb_ev_img_cache_url', [cache_url]) );
+         * ```
+         * @param {Function|null} [update_callback=null] Обратная функция в случае успешного завершения
+         * @param {function|null} [error_callback=null] Обратная функция в случае ошибки, возвращает сообщение.
+         * @param {Boolean|null} [force_reload_image=false] По умолчанию изображения загружаются только если их нет в кэше браузера и загружено достаточно большое изображение, этот параметр позволяет игнорировать такие проверки.
          */
         update: function (update_callback, error_callback, force_reload_image) {
-            if (fb.timeout_size === 0)
-                fb.timeout_size = 50;
-            if ((fb.update_is_worked && !uc_skip) || (fb.stage_loaded !== -1 && !io_is_first_init)) {
+            if (browser === null)
+                b_init();
+            if ((fb.update_is_worked || (fb.stage_loaded !== -1 && !io_is_first_init) || browser.isWebpSupport === -1) && !uc_skip) {
                 if (update_callback)
                     last_update_callbacks.push(update_callback);
                 clearTimeout(timeout);
@@ -62,6 +127,7 @@ var fast_background = null;
             }
             uc_skip = false;
             fb.update_is_worked = true;
+
             switch (fb.stage_loaded) {
                 case -1:
                     fb.stage_loaded = 0;
@@ -70,6 +136,8 @@ var fast_background = null;
                     fb.stage_loaded = 1;
                     break;
             }
+            if (fb.is_debug_pws)
+                console.warn('fb.stage_loaded ' + fb.stage_loaded);
             p_post_ajax_work_streams = 0;
             if (fb.is_debug_pws)
                 console.log('pws set ' + p_post_ajax_work_streams);
@@ -78,8 +146,7 @@ var fast_background = null;
             if (fb.cssobj === null) {
                 fb.cssobj = cssobj({});
             }
-            if (browser === null)
-                b_init();
+
             ajax_work_minus = null;
             ajax_work_minus = function () {
                 fb.ajax_is_work--;
@@ -173,6 +240,8 @@ var fast_background = null;
             fb.ajax_is_work = imgs_for_load.length;
 
             if (fb.ajax_is_work < 1) {
+                fb.update_is_worked = false;
+                fb.stage_loaded = -1;
                 if (update_callback)
                     update_callback();
                 return;
@@ -190,10 +259,6 @@ var fast_background = null;
                     var fb_class = null;
                     if (!img_obj_.is_fb_class) {
                         url = img_obj_.attr('data-url');
-                        if (!url) {
-                            fb.ajax_is_work--;
-                            return;
-                        }
                         fb_selector = null;
                     } else {
                         is_fb_class = true;
@@ -202,20 +267,27 @@ var fast_background = null;
                         fb_selector = img_obj_.fb_selector;
                         fb_tmp_attr_p = fb_selector ? fb_selector.replace(/ |>|\*|\(|\)|\+|\@/gi, "_") : "";
                         img_obj_ = img_obj_.first_elem;
-                        if(!img_obj_) {
-                            fb.ajax_is_work--;
+                        if (!img_obj_) {
+                            ajax_work_minus();
                             return;
-                    }
+                        }
                     }
 
-                    var o_url = url ? url.split(':') : [null];
+                    if (!url) {
+                        ajax_work_minus();
+                        return;
+                    }
+
+                    if (fb.clear_urls_pattern)
+                        url = url.replace(fb.clear_urls_pattern, '');
+                    var o_url = url.split(':');
                     url = o_url[0];
                     if (!o_url[1])
                         o_url[1] = null;
-                    var end_f_type = fb.img_types[o_url[1]] ? fb.img_types[o_url[1]] : 0;
+                    var end_f_type = img_types[o_url[1]] ? img_types[o_url[1]] : 0;
                     if (end_f_type === 0)
-                        end_f_type = fb.img_types.webp;
-                    if (end_f_type === fb.img_types.webp && !browser.isWebpSupport)
+                        end_f_type = img_types.webp;
+                    if (end_f_type === img_types.webp && !browser.isWebpSupport)
                         end_f_type = 0;
                     var type = img_obj_.is('img') ? b_types.img_src : b_types.b_url;
 
@@ -232,20 +304,49 @@ var fast_background = null;
                         url = url.replace(" !important", "");
                     }
 
-                    // if (type === b_types.img_src && !img_obj_.attr('src'))
-                    //     img_obj_.attr('src', img_1px);
+                    if (type === b_types.img_src && !img_obj_.attr('src'))
+                        img_obj_.attr('src', img_1px);
 
                     var save_c_url = null;
-                    var width = img_obj_.width();
-                    var height = img_obj_.height();
+                    var width, height, cached_key;
+
+                    width = img_obj_.width();
+                    height = img_obj_.height();
                     img_obj_.data('fb_img_type', end_f_type);
-                    var cached_key = get_cached_key(img_obj_, url + ':' + end_f_type, width, height);
-                    if (!force_reload_image) {
+
+                    cached_key = get_cached_key(img_obj_, url + ':' + end_f_type, width, height);
+                    if (fb.is_debug_pws) {
+                        console.log('cached_key: ' + cached_key);
+                    }
+
+                    var i_compress_support = /(jpe?g|png|webp)$/i.test(url);
+
+                    // if (url === "cache/uploads/houses/391/650xauto_1572543819_interior_2V3-13_1.jpg")
+                    //     debugger;
+
+                    if (!force_reload_image || !i_compress_support) {
                         save_c_url = cache.get(cached_key);
-                        if (save_c_url && is_full_c_img(save_c_url)) {
-                            if (fb.stage_loaded < 1)
-                                set_f(save_c_url, img_obj_, fb_selector, true);
-                            else
+                        var in_fast_cache = false;
+                        if (!save_c_url && !i_compress_support)
+                            save_c_url = url;
+                        if (fb.stage_loaded < 1 && (!save_c_url || !i_compress_support) && load_only_visible) {
+                            var fc_key = url + ':' + end_f_type;
+                            if (fb.fast_cache[fc_key] || !i_compress_support) {
+                                if (i_compress_support)
+                                    save_c_url = fb.fast_cache[fc_key];
+                                in_fast_cache = true;
+                                if (is_show(img_obj_, fb_selector))
+                                    set_f(save_c_url, img_obj_, fb_selector, true, true);
+                            }
+                        }
+
+                        if (save_c_url) {
+                            if (fb.stage_loaded < 1 && !in_fast_cache) {
+                                if (is_show(img_obj_, fb_selector))
+                                    set_f(save_c_url, img_obj_, fb_selector, true, false, true);
+                                else
+                                    ajax_work_minus();
+                            } else
                                 ajax_callback(url, save_c_url, img_obj_, fb_selector, fb_tmp_attr_p, cached_key, true);
                             return;
                         }
@@ -300,12 +401,18 @@ var fast_background = null;
                             height = $(window).height();
                         } else if (width_is_auto || height_is_auto)
                             cover_size = true;
-                    } else if (type === b_types.img_src && ([width, height].indexOf(0) !== -1)) {
+                    } else if (type === b_types.img_src && ([width, height].indexOf(1) !== -1)) {
                         c_obj = img_obj_.parent();
-                        if (width === 0)
-                            width = c_obj.width();
-                        else if (height === 0)
-                            height = c_obj.height();
+                        while (true) {
+                            if (width === 1)
+                                width = c_obj.width();
+                            if (height === 1)
+                                height = c_obj.height();
+                            if (width === 1 || height === 1) {
+                                c_obj = c_obj.parent();
+                            } else
+                                break;
+                        }
                     }
                     cover_size = cover_size ? 1 : 0;
                     var def_size = fb.stage_loaded >= 1 ? (fb.stage_loaded >= 2 ? 0 : 1) : 2;
@@ -352,6 +459,8 @@ var fast_background = null;
                         return;
                     }
                     var cont_size = width + "x" + height;
+                    // if(cont_size==='1x1')
+                    //     debugger;
 
 
                     if (is_fb_class && fb_class.length === 0)
@@ -384,8 +493,10 @@ var fast_background = null;
                         }, error_callback);
                 })(img_obj);
             }
+            if (load_only_visible)
+                fb.cssobj.update();
 
-            if (fb.stage_loaded < 2) {
+            if (fb.stage_loaded < 2 && postponed.length) {
                 var send_d = {
                     web_url: '',
                     cover_size: '',
@@ -415,9 +526,9 @@ var fast_background = null;
             }
         }
     };
-    var fb = fast_background,
-        $ = jQuery,
-        browser = null,
+    var $ = jQuery;
+    fb = $.extend(fast_background, fb);
+    var browser = null,
         page_unloaded = false,
         timeout = null,
         p_post_ajax_work_streams = 0,
@@ -450,7 +561,14 @@ var fast_background = null;
                 if (browser.isLocalStorageSupported)
                     localStorage.removeItem(cached_key);
             }
+        },
+        uc_skip = false,
+        img_types = {
+            jpg: 2,
+            png: 3,
+            webp: 18
         };
+
     $(function () {
         $(window).on('beforeunload.fast_background', function (e) {
             page_unloaded = true;
@@ -471,6 +589,9 @@ var fast_background = null;
         $(document).on('scroll mousemove touchstart', function (ev) {
             if (load_only_visible && fb.stage_loaded > 0) {
                 load_only_visible = false;
+                if (fb.is_debug_pws)
+                    console.warn('load_only_visible set false');
+                // debugger;
                 fast_background.update();
             }
         });
@@ -554,7 +675,19 @@ var fast_background = null;
             var canvas = typeof document === 'object' ?
                 document.createElement('canvas') : {};
             canvas.width = canvas.height = 1;
-            return canvas.toDataURL ? canvas.toDataURL('image/webp').indexOf('image/webp') === 5 : false;
+            var is_support = canvas.toDataURL ? canvas.toDataURL('image/webp').indexOf('image/webp') === 5 : false;
+
+            if (is_support)
+                return is_support;
+            var el = new Image();
+            var res = function (ev) {
+                browser.isWebpSupport = ev && ev.type === 'load' ? el.width === 1 : false;
+            };
+            el.onerror = res;
+            el.onload = res;
+            el.src = 'data:image/webp;base64,UklGRkoAAABXRUJQVlA4WAoAAAAQAAAAAAAAAAAAQUxQSAwAAAABBxAR/Q9ERP8DAABWUDggGAAAADABAJ0BKgEAAQADADQlpAADcAD++/1QAA==';
+            return -1;
+
         })();
 
         // browser.isLocalStorageSupported = false;
@@ -590,7 +723,7 @@ var fast_background = null;
                     if (error_callback)
                         error_callback(data);
                     else
-                        console.log("ERROR POST AJAX: " + data);
+                        console.error("ERROR POST AJAX: " + data);
                     callback_function(null);
                     return;
                 }
@@ -601,7 +734,7 @@ var fast_background = null;
             .fail(function (xhr, status, error) {
                 p_post_ajax_work_streams--;
                 if (fb.is_debug_pws) {
-                    console.log('ajax fail');
+                    console.error('ajax fail');
                     console.log('pws ' + p_post_ajax_work_streams);
                 }
                 if (page_unloaded)
@@ -610,7 +743,7 @@ var fast_background = null;
                     error_callback("ERROR POST AJAX: <div style='white-space: pre-wrap; word-wrap:break-word;'>" + window.location.href + " " + ($.toJSON ? $.toJSON(query_object) : "") +
                         "</div><br>ERROR TEXT: " + error);
                 else
-                    console.log("ERROR POST AJAX: " + error);
+                    console.error("ERROR POST AJAX: " + error);
                 callback_function(null);
             });
     }
@@ -656,7 +789,7 @@ var fast_background = null;
 
         p_post_ajax_work_streams++;
         if (fb.is_debug_pws) {
-            console.log("load_img " + url);
+            console.warn("load_img " + url);
             console.log('pws ' + p_post_ajax_work_streams);
         }
         var img = new Image();
@@ -707,13 +840,17 @@ var fast_background = null;
     }
 
 
-    function set_f(url, img_obj, fb_selector, is_update_off) {
+    function set_f(url, img_obj, fb_selector, is_update_off, ajax_work_not_minus, not_add_fb_loaded) {
+        if (fb.is_debug_pws)
+            console.log('set_f-' + url);
+        // if (url === "/.fast_background/1/16/16c5c65c2deaaa0fd86fad3c6a062dc90ad30bc9_18_604.webp")
+        //     debugger;
         if (is_full_c_img(url)) {
             if (img_obj.hasClass('fb_loaded')) {
                 img_obj.removeClass('fb_loaded');
                 img_obj.addClass('fb_dynamic_url');
             }
-            if (!img_obj.hasClass('fb_dynamic_url'))
+            if (!img_obj.hasClass('fb_dynamic_url') && !ajax_work_not_minus && !not_add_fb_loaded)
                 img_obj.addClass('fb_loaded');
             img_obj.data('fb_last_load_url', url);
         }
@@ -722,10 +859,16 @@ var fast_background = null;
             switch (type) {
                 case b_types.b_url:
                     var selector = fb_selector;
-                    if (!selector)
+                    if (selector)
+                        $(selector).css(type, '');
+                    else {
+                        img_obj[0].style[type] = '';
                         selector = get_l_id(img_obj);
+                    }
+
                     if (typeof fb.cssobj.obj[selector] === "undefined")
                         fb.cssobj.obj[selector] = {};
+
 
                     var is_already_important = !is_already_important && important_selectors.indexOf(selector) !== -1;
                     var css_url = 'url(' + url + ')' + (is_already_important ? " !important" : "");
@@ -748,7 +891,10 @@ var fast_background = null;
                     // console.log(selector + " " + fb.cssobj.obj[selector][type]);
                     break;
                 case b_types.img_src:
-                    img_obj.attr(type, url);
+                    // if (url && url.indexOf('def_21f184') !== -1)
+                    //     console.log('x');
+                    if (img_obj.attr(type) !== url)
+                        img_obj.attr(type, url);
                     requestAnimFrame(function () {
                         var w_width_ = $(window).width();
                         var width_ = img_obj.width();
@@ -759,13 +905,14 @@ var fast_background = null;
                     break;
             }
 
-            if (img_obj.hasClass('fb_ev_img_load'))
-                img_obj.trigger('fb_ev_img_load');
+            if (!ajax_work_not_minus && img_obj.hasClass('fb_ev_img_load'))
+                img_obj.trigger('fb_ev_img_load', [url]);
         } catch (e) {
             console.warn(e.message);
         }
 
-        ajax_work_minus();
+        if (!ajax_work_not_minus)
+            ajax_work_minus();
     }
 
     function remove_f(img_obj, fb_selector) {
@@ -819,24 +966,29 @@ var fast_background = null;
         return cached_key;
     }
 
+    function is_show(img_obj, fb_selector) {
+        if (load_only_visible) {
+            var rect = img_obj[0].getBoundingClientRect();
+            return (rect.top < window_h && (rect.top || rect.height)) || img_obj.hasClass('fb_ignore_io');
+        } else
+            return (!io || to_load_fb_sels[fb_selector ? fb_selector : get_l_id(img_obj)] || img_obj.hasClass('fb_ignore_io'));
+    }
+
     function ajax_callback(url, curl, img_obj, fb_selector, fb_tmp_attr_p, cached_key, is_cached) {
 
         function err_c() {
             cache.del(cached_key);
+            img_obj.removeClass('fb_loaded');
+            img_obj.data('fb_before_error', true);
             ajax_work_minus();
-            // remove_f(img_obj, fb_selector);
         }
-
-        // if (url === "img/footer.jpg")
-        //     debugger;
 
         if (!curl) {
             err_c();
             return;
         }
 
-
-        if (curl && !/(^data:)/.test(curl) && !is_cached)
+        if (curl && !/(^data:)/.test(curl) && !is_cached && is_full_c_img(curl))
             cache.set(cached_key, curl);
         if (!is_full_c_img(curl)) {
             var na_tmp_width = 'tmp_width' + (fb_selector ? "_c_" + fb_tmp_attr_p : "");
@@ -845,19 +997,16 @@ var fast_background = null;
             img_obj.removeData(na_tmp_height);
         }
 
-        var rect = img_obj[0].getBoundingClientRect();
-        if ((!load_only_visible && (!io || to_load_fb_sels[fb_selector ? fb_selector : get_l_id(img_obj)] || img_obj.hasClass('fb_ignore_io')))
-            || (load_only_visible && rect.top < window_h && rect.height)) {
-            // if (cached_key.indexOf('r64_glyph8-min2') !== -1)
-            //     debugger;
+        if (is_show(img_obj, fb_selector)) {
+            if (img_obj.hasClass('fb_ev_img_cache_url'))
+                img_obj.trigger('fb_ev_img_cache_url', [curl]);
+            if (img_obj.data('fb_before_error'))
+                curl += '?is_retry=1';
             loader_img(curl, function () {
-                // if (cached_key.indexOf('r64_glyph8-min2') !== -1)
-                //     debugger;
                 set_f(curl, img_obj, fb_selector);
             }, err_c);
         } else
             ajax_work_minus();
-
     }
 
 
@@ -910,19 +1059,27 @@ var fast_background = null;
     }
 
     function io_h_url_p(jq_el, url, sel) {
+
         // if (!url)
         //     debugger;
         url = url.replace(" !important", "");
+        if (url && fb.clear_urls_pattern)
+            url = url.replace(fb.clear_urls_pattern, '');
+        url = url.split(':')[0];
         url += ':' + jq_el.data('fb_img_type');
         var c_key = get_cached_key(jq_el, url);
         var c_url = cache.get(c_key);
         if (c_url && (!jq_el.hasClass('fb_loaded') || jq_el.data('fb_last_load_url') !== c_url)) {
             fb.ajax_is_work++;
+            if (jq_el.data('fb_before_error'))
+                c_url += '?is_retry=1';
             loader_img(c_url, function () {
                 if (io)
                     io.unobserve(jq_el[0]);
                 set_f(c_url, jq_el, sel);
             }, function () {
+                jq_el.removeClass('fb_loaded');
+                jq_el.data('fb_before_error', true);
                 cache.del(c_key);
                 ajax_work_minus();
             });
@@ -934,12 +1091,11 @@ var fast_background = null;
     var io_is_first_init = false;
 
     function io_handler(entry) {
-        if (!io_is_first_init) {
-            clearTimeout(io_handler_t);
-            io_handler_t = setTimeout(function () {
-                io_is_first_init = true;
-            }, 100);
+        if (load_only_visible) {
+            setTimeout(arguments.callee.bind(this, entry), 300);
+            return;
         }
+        io_is_first_init = true;
         var is_new_sel_found = false;
         for (var key in entry) {
             // if (!entry.hasOwnProperty(key)) continue;
@@ -982,6 +1138,7 @@ var fast_background = null;
              console.log(_sel);
          }*/
     }
+
 
     var io = 'IntersectionObserver' in window ? new IntersectionObserver(io_handler, {rootMargin: "0px 1000px " + (window_h + window_h / 2) + "px 1000px"}) : null;
 })();

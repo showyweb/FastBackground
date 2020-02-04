@@ -5,11 +5,11 @@ require_once "fast_background_tools.php";
 class fast_background extends fast_background_tools
 {
     /**
-     * @param null|string $relative_path_for_cache [optional] Относительный путь до директории кэша изображений, файлы в директории должны иметь публичный доступ для скачивания.
+     * @param null|string $relative_path_for_cache [optional] Относительный путь от корневой директории сайта до кэша изображений, файлы в директории должны иметь публичный доступ для скачивания.
      * @param null|string $public_work_path [optional] Публичный корневой каталог сайта.
      * @param null|string $root_path [optional] Корневой каталог сайта.
      */
-    function __construct($relative_path_for_cache = ".fast_background", $public_work_path = null, $root_path = null)
+    function __construct($relative_path_for_cache = "/.fast_background", $public_work_path = null, $root_path = null)
     {
         //                echo(print_r($_SERVER));
         //        ini_set('display_errors', 1);
@@ -18,30 +18,32 @@ class fast_background extends fast_background_tools
         if(substr($this->work_path, 2, 1) === "\\")
             $this->work_path = str_replace("\\", "/", $this->work_path);
 
-        /*$wp = dirname($_SERVER['PHP_SELF']);
-        if($wp !== "/")
-            $this->work_path = str_replace($wp, "", $this->work_path);*/
-//        exit($this->work_path);
-
         $this->cache_relative_path = $relative_path_for_cache;
         $path_cache = $this->work_path . "/" . $this->cache_relative_path;
         $path_cache = $this->clear_slashes($path_cache);
         /*var_export($path_cache);
         exit();*/
         if(!is_dir($path_cache))
-            mkdir($path_cache);
+            mkdir($path_cache, 0770);
+        $this->path_cache = $path_cache;
         $root_path = !is_null($root_path) ? $root_path : $_SERVER["DOCUMENT_ROOT"];
         $this->web_relative_path = str_replace($root_path, "", $this->work_path);
         if(!empty($this->web_relative_path))
-            $this->web_relative_path .= "/";
+            $this->web_relative_path = '/' . $this->web_relative_path . '/';
         $this->web_relative_path = $this->clear_slashes($this->web_relative_path);
-        /* var_export($this->work_path);
-         echo "<br>";
-         var_export($this->relative_path);
-         exit();*/
+        /*var_export($this->work_path);
+        echo "<br>";
+        var_export($this->path_cache);
+        echo "<br>";
+        var_export($this->web_relative_path);
+        echo "<br>";
+        var_export($root_path);
+        echo "<br>";*/
+        //         exit();
 
         parent::__construct();
     }
+
 
     private function prepare_vars(&$web_url, &$cover_size, &$cont_size, &$def_size, &$end_type)
     {
@@ -67,6 +69,14 @@ class fast_background extends fast_background_tools
             return;
 
         switch ($r) {
+            case 'fc_script':
+                $js = 'fast_background={fast_cache:' . json_encode($this->fc_get()) . '}';
+                header('Content-type: text/javascript');
+                header('Access-Control-Allow-Origin: *');
+                header("Cache-control: public");
+                header("Cache-control: max-age=31536000");
+                exit($js);
+                break;
             case 'get_cached_url':
                 session_write_close();
                 $url = $this->get_request('web_url', false);
@@ -102,10 +112,10 @@ class fast_background extends fast_background_tools
 
                     try {
                         $cached_url = $this->get_url($url, $cover_size, $cont_size[0], $cont_size[1], $def_size, $end_type);
-                    } catch (Throwable $e) {
+                    } catch (Exception $e) {
                         error_log($e->getMessage() . " in " . $e->getLine() . ":" . $e->getFile());
                         $cached_url = "";
-                    } catch (Exception $e) {
+                    } catch (Throwable $e) {
                         error_log($e->getMessage() . " in " . $e->getLine() . ":" . $e->getFile());
                         $cached_url = "";
                     }
@@ -119,7 +129,7 @@ class fast_background extends fast_background_tools
 
     /** Запускает очистку кэша на сервере, удаляя изображения старше значения $time_filter. (Очистка кэша может не запустится если в директории кэша
      * имеется файл блокировки который младше значения $time_filter)
-     * @param int $time_filter [optional] Значение в секундах. По умолчанию 30 дней.
+     * @param float|int $time_filter [optional] Значение в секундах. По умолчанию 30 дней.
      */
     function clear_cache($time_filter = 30 * 24 * 60 * 60)
     {
@@ -129,9 +139,7 @@ class fast_background extends fast_background_tools
 
     private function clear_cache_job($time_filter, $path = null)
     {
-        $path_cache = $this->work_path . "/" . $this->cache_relative_path;
-
-        $path_cache = $this->clear_slashes($path_cache);
+        $path_cache = $this->path_cache;
 
         $cur_time = time();
         if(is_null($path)) {
@@ -165,34 +173,34 @@ class fast_background extends fast_background_tools
         if($files_count < 1)
             try {
                 rmdir($path);
-            } catch (Throwable  $e) {
             } catch (Exception $e) {
+            } catch (Throwable  $e) {
             }
         return $files_count;
     }
 
     /** Формирует необходимое изображение в кэше и возвращает относительный путь. В случае ошибки возвращает null.
      * @param string $web_url Относительный путь до изображения.
-     * @param bool $cover_size Рассчитать минимальный размер изображения таким образом, чтобы оно заполнило контейнер, если false, то чтобы вместилось.
-     * @param int $cont_width Ширина контейнера в пикселях.
-     * @param int $cont_height Высота контейнера в пикселях.
-     * @param bool $def_size Вернуть изображение по умолчанию для первоначальной быстрой загрузки, если нужного нет в кэше. Изображение по умолчанию формируется при полном отсутствии его в кэше. (Для ПК максимальный размер одной из сторон равен 1000 пикс., для мобильных устройств 500 пикс., частный размер может быть меньше если при формировании размеры контейнера меньше этих ограничений. При обновлении страницы в клиентском браузере, такое изображение уже не запрашивается, так как будет использоваться кэш браузера).
-     *
-     * 0 - не использовать
-     *
-     * 1 - использовать, если в кэше нет нужного размера
-     *
-     * 2 - использовать в любом случае
+     * @param bool $cover_size (Не обязательно, если $def_size=3) Рассчитать минимальный размер изображения таким образом, чтобы оно заполнило контейнер, если false, то чтобы вместилось.
+     * @param int $cont_width (Не обязательно, если $def_size=3) Ширина контейнера в пикселях.
+     * @param int $cont_height (Не обязательно, если $def_size=3) Высота контейнера в пикселях.
+     * @param int $def_size Вернуть изображение "по умолчанию" для первоначальной быстрой загрузки, если нужного нет в кэше. Изображение "по умолчанию" формируется при полном отсутствии его в кэше. (Для ПК максимальный размер одной из сторон равен 1000 пикс., для мобильных устройств 500 пикс., частный размер может быть меньше если при формировании размеры контейнера меньше этих ограничений. При обновлении страницы в клиентском браузере, такое изображение уже не запрашивается, так как будет использоваться кэш браузера).
+     *<br><br>
+     * 0 - не использовать<br>
+     * 1 - использовать, если в кэше нет нужного размера<br>
+     * 2 - использовать в любом случае<br>
+     * 3 - Почти как 2, но вернет путь, только если изображение "по умолчанию" уже сформировано в кэше, иначе empty
+     * @param null|int $end_type Конечный формат изображения, поддерживаемые константы: IMAGETYPE_WEBP, IMAGETYPE_JPEG и IMAGETYPE_PNG
      * @param int $size_limit Максимальный размер одной из сторон изображения для хранения в кэше.
      * @return null|string
+     * @throws exception
      */
-    function get_url($web_url, $cover_size, $cont_width = 0, $cont_height = 0, $def_size = false, $end_type = null, $size_limit = 3840/*2X Full HD*/)
+    function get_url($web_url, $cover_size = false, $cont_width = 0, $cont_height = 0, $def_size = 0, $end_type = null, $size_limit = 3840/*2X Full HD*/)
     {
-        //        if($web_url=="/uploads/mcm-29-20180827153950.png")
-        //            echo "";
+        $clone_et = $end_type;
 
         //        $is_debug = !!$this->get_request('debug');
-        if($web_url == "" || (($cont_width == 0 || $cont_width == null) && ($cont_height == 0 || $cont_height == null)))
+        if($web_url == "" || ($def_size!==3 && ($cont_width == 0 || $cont_width == null) && ($cont_height == 0 || $cont_height == null)))
             return null;
         $f_imagewebp_exist = function_exists('imagewebp');
         //        $f_imagewebp_exist = false;
@@ -233,10 +241,10 @@ class fast_background extends fast_background_tools
             //            header('dbg' . __LINE__ . ':+');
             $type = empty($end_type) ? $this->get_img_type($web_url) : $end_type;
             //            header('dbg' . __LINE__ . ':+');
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             //            header('dbg' . __LINE__ . ':+');
             return $this->web_relative_path . $web_url;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             //            header('dbg' . __LINE__ . ':+');
             return $this->web_relative_path . $web_url;
         }
@@ -283,13 +291,7 @@ class fast_background extends fast_background_tools
         $sub_dir = substr($cache_img_name, 0, 1);
         $sub_dir2 = substr($cache_img_name, 0, 2);
 
-
-        $path_cache = $this->work_path . "/" . $this->cache_relative_path;
-
-        $path_cache = $this->clear_slashes($path_cache);
-
-        if(!is_dir($path_cache))
-            mkdir($path_cache, 0770);
+        $path_cache = $this->path_cache;
         $path_cache .= "/" . $sub_dir;
         if(!is_dir($path_cache))
             mkdir($path_cache, 0770);
@@ -325,15 +327,23 @@ class fast_background extends fast_background_tools
 
         $def_size_limit = ($size < $default_min_size) ? $size : $default_min_size;
         if(!file_exists($img_default_path)) {
-            copy($filename, $img_default_path);
-            chmod($img_default_path, 0660);
-            $quality = fast_background_JPEG_QUALITY::MEDIUM;
-            $this->compressing_img($def_size_limit, $web_url_img_default_path, !$is_cwebp_use ? $type : null, !$is_cwebp_use ? $quality : fast_background_JPEG_QUALITY::HIGHEST);
-            if($is_cwebp_use)
-                $this->cwebp($web_url_img_default_path, $quality);
+            if($def_size !== 3) {
+                copy($filename, $img_default_path);
+                chmod($img_default_path, 0660);
+                $quality = fast_background_JPEG_QUALITY::MEDIUM;
+                $this->compressing_img($def_size_limit, $web_url_img_default_path, !$is_cwebp_use ? $type : null, !$is_cwebp_use ? $quality : fast_background_JPEG_QUALITY::HIGHEST);
+                if($is_cwebp_use)
+                    $this->cwebp($web_url_img_default_path, $quality);
+            } else
+                return '';
         }
 
-        if((($def_size === 1 && $is_cache_filename_reset) || $def_size === 2) && file_exists($img_default_path))
+        if($def_size === 2) {
+            $fc_key = $web_url . ':' . $clone_et;
+            $this->fc_set($fc_key, $web_url_img_default_path);
+        }
+
+        if((($def_size === 1 && $is_cache_filename_reset) || $def_size === 2 || $def_size === 3) && file_exists($img_default_path))
             return $this->web_relative_path . $web_url_img_default_path;
 
         if($is_cache_filename_reset) {

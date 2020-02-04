@@ -14,15 +14,55 @@ class fast_background_tools
 
     protected $cache_relative_path = null;
 
+    protected $path_cache = null;
+
     protected $web_relative_path = null;
 
     private $lock_file = null;
 
-    public function __construct()
+    private $fast_cache = null;
+    private $fc_file = null;
+    private $fc_is_modified = false;
+
+    function __construct()
     {
-        $path_cache = $this->work_path . "/" . $this->cache_relative_path;
-        $this->lock_file = $path_cache . '/compressing_img_lock';
+        $this->lock_file = $this->path_cache . '/compressing_img_lock';
         $this->lock_file = $this->clear_slashes($this->lock_file);
+    }
+
+    private function fc_init()
+    {
+        if(!is_null($this->fast_cache))
+            return;
+        $loc = $_SERVER['REQUEST_URI'];
+        if(stripos($loc, 'FastBackground') !== false && isset($_SERVER['HTTP_REFERER']))
+            $loc = $_SERVER['HTTP_REFERER'];
+        $loc = preg_replace('/\\?.*/u', '', $loc);
+        $this->fc_file = $this->path_cache . '/fast_cache_' . ($this->is_mobile_device() ? 'm_' : '') . crc32($loc);
+        $this->fast_cache = file_exists($this->fc_file) ? unserialize($this->open_txt_file($this->fc_file, null)) : [];
+    }
+
+    function fc_set($key, $val)
+    {
+        if(is_null($this->fast_cache))
+            $this->fc_init();
+        if(isset($this->fast_cache[$key]))
+            return;
+        $this->fc_is_modified = true;
+        $this->fast_cache[$key] = $val;
+    }
+
+    function fc_get()
+    {
+        if(is_null($this->fast_cache))
+            $this->fc_init();
+        return $this->fast_cache;
+    }
+
+    function __destruct()
+    {
+        if($this->fc_is_modified)
+            $this->save_to_text_file($this->fc_file, serialize($this->fast_cache), null);
     }
 
     protected function error($mes)
@@ -241,8 +281,8 @@ class fast_background_tools
     protected function get_size($web_url)
     {
 
-            $filename = "/" . $web_url;
-            $filename = $this->work_path . $filename;
+        $filename = "/" . $web_url;
+        $filename = $this->work_path . $filename;
 
         $filename = $this->clear_slashes($filename);
         list($width, $height) = getimagesize($filename);
@@ -275,9 +315,10 @@ class fast_background_tools
                 }
             }
             $this->save_to_text_file($lock_file, '', null);
-        } catch (Throwable $e) {
-            $this->unlock();
+            chmod($lock_file, 0660);
         } catch (Exception $e) {
+            $this->unlock();
+        } catch (Throwable $e) {
             $this->unlock();
         }
     }
@@ -288,9 +329,9 @@ class fast_background_tools
         try {
             if(file_exists($lock_file))
                 unlink($lock_file);
-        } catch (Throwable $e) {
-
         } catch (Exception $e) {
+
+        } catch (Throwable $e) {
 
         }
     }
@@ -351,11 +392,11 @@ class fast_background_tools
                     try {
                         $imgInfo = getimagesize($filename);
                         break;
-                    } catch (Throwable  $ex) {
+                    } catch (Exception $ex) {
                         sleep(1);
                         if(!file_exists($filename))
                             $this->error("Ошибка обработки изображения!");
-                    } catch (Exception $ex) {
+                    } catch (Throwable  $ex) {
                         sleep(1);
                         if(!file_exists($filename))
                             $this->error("Ошибка обработки изображения!");
@@ -366,9 +407,9 @@ class fast_background_tools
             $exif = null;
             try {
                 $exif = @exif_read_data($filename);
-            } catch (Throwable  $ex) {
-
             } catch (Exception $ex) {
+
+            } catch (Throwable  $ex) {
 
             }
 
@@ -419,6 +460,7 @@ class fast_background_tools
                         $this->error("Ошибка обработки изображения!");
                     break;
                 case IMAGETYPE_WEBP:
+
                     if(!($source = imagecreatefromwebp($filename)))
                         $this->error("Ошибка обработки изображения!");
                     break;
@@ -497,11 +539,11 @@ class fast_background_tools
                 imagedestroy($im);
             if(isset($img))
                 imagedestroy($img);
-        } catch (Throwable  $e) {
+        } catch (Exception $e) {
             if(file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());
-        } catch (Exception $e) {
+        } catch (Throwable  $e) {
             if(file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());
@@ -525,11 +567,11 @@ class fast_background_tools
             exec($exec_command, $output, $return_var);
             if($return_var != 0)
                 $this->error("Ошибка сжатия файла $filename с помощью команды exec('cwebp...');");
-        } catch (Throwable  $e) {
+        } catch (Exception $e) {
             if(file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());
-        } catch (Exception $e) {
+        } catch (Throwable  $e) {
             if(file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());
@@ -537,4 +579,14 @@ class fast_background_tools
             $this->unlock();
         }
     }
+}
+
+/*Заглушка для инспектора кода в IDE*/
+if(false && !function_exists('imagecreatefromwebp')){
+    /**
+     * @param $filename
+     * @return resource|void
+     * @link http://php.net/manual/ru/function.imagecreatefromwebp.php
+     */
+    function imagecreatefromwebp($filename){}
 }
