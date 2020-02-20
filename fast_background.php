@@ -27,6 +27,7 @@ class fast_background extends fast_background_tools
             mkdir($path_cache, 0770);
         $this->path_cache = $path_cache;
         $root_path = !is_null($root_path) ? $root_path : $_SERVER["DOCUMENT_ROOT"];
+        $root_path = str_replace("\\", "/", $root_path);
         $this->web_relative_path = str_replace($root_path, "", $this->work_path);
         if(!empty($this->web_relative_path))
             $this->web_relative_path = '/' . $this->web_relative_path . '/';
