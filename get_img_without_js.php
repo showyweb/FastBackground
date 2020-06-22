@@ -13,5 +13,5 @@ function fb_cache($img_web_url, $relative_path_for_cache = "/.fast_background", 
     global $fast_background_obj;
     if(empty($fast_background_obj))
         $fast_background_obj = new fast_background($relative_path_for_cache, $public_work_path, $root_path);
-    return $fast_background_obj->get_url($img_web_url, false, 0, 0, 3, IMAGETYPE_WEBP);
+    return $fast_background_obj->get_url($img_web_url, false, 0, 0, 3, $fast_background_obj->is_webp_support_from_http_header()?IMAGETYPE_WEBP:IMAGETYPE_JPEG);
 }

@@ -38,7 +38,7 @@ class fast_background_tools
         if(stripos($loc, 'FastBackground') !== false && isset($_SERVER['HTTP_REFERER']))
             $loc = $_SERVER['HTTP_REFERER'];
         $loc = preg_replace('/\\?.*/u', '', $loc);
-        $this->fc_file = $this->path_cache . '/fast_cache_' . ($this->is_mobile_device() ? 'm_' : '') . crc32($loc);
+        $this->fc_file = $this->path_cache . '/fast_cache_' . ($this->is_mobile_device() ? 'm_' : '') . sha1($loc);
         $this->fast_cache = file_exists($this->fc_file) ? unserialize($this->open_txt_file($this->fc_file, null)) : [];
     }
 
@@ -56,6 +56,11 @@ class fast_background_tools
     {
         if(is_null($this->fast_cache))
             $this->fc_init();
+        foreach ($this->fast_cache as $key => $val) {
+            $this->fc_is_modified = true;
+            if(!file_exists($this->work_path.$val))
+                unset($this->fast_cache[$key]);
+        }
         return $this->fast_cache;
     }
 
@@ -63,6 +68,15 @@ class fast_background_tools
     {
         if($this->fc_is_modified)
             $this->save_to_text_file($this->fc_file, serialize($this->fast_cache), null);
+    }
+
+    function is_webp_support_from_http_header(){
+        if(!isset($_SERVER['HTTP_ACCEPT']))
+            return false;
+        if(strpos($_SERVER['HTTP_ACCEPT'], 'image/webp' ) !== false)
+            return true;
+        else
+            return false;
     }
 
     protected function error($mes)

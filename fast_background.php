@@ -250,9 +250,27 @@ class fast_background extends fast_background_tools
             return $this->web_relative_path . $web_url;
         }
 
+        $text_type = ".";
+        switch ($type) {
+            case IMAGETYPE_JPEG:
+                $text_type .= 'jpg';
+                break;
+            case IMAGETYPE_PNG:
+                $text_type .= 'png';
+                break;
+            case IMAGETYPE_WEBP:
+                $text_type .= 'webp';
+                break;
+            default:
+                return $this->web_relative_path . $web_url;
+                break;
+        }
 
         $img_width = $size_vars->width;
         $img_height = $size_vars->height;
+
+        if(!$img_width || !$img_height)
+             return $this->web_relative_path . $web_url;
 
         $img_max = $img_width;
         if($img_height > $img_max)
@@ -272,21 +290,7 @@ class fast_background extends fast_background_tools
         if($size > $size_limit)
             $size = $size_limit;
 
-        $text_type = ".";
-        switch ($type) {
-            case IMAGETYPE_JPEG:
-                $text_type .= 'jpg';
-                break;
-            case IMAGETYPE_PNG:
-                $text_type .= 'png';
-                break;
-            case IMAGETYPE_WEBP:
-                $text_type .= 'webp';
-                break;
-            default:
-                return $this->web_relative_path . $web_url;
-                break;
-        }
+
 
         $cache_img_name = sha1($web_url . $filemtime_filename) . "_{$type}_";
         $sub_dir = substr($cache_img_name, 0, 1);
