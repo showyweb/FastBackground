@@ -57,9 +57,10 @@ class fast_background_tools
         if(is_null($this->fast_cache))
             $this->fc_init();
         foreach ($this->fast_cache as $key => $val) {
-            $this->fc_is_modified = true;
-            if(!file_exists($this->work_path.$val))
+            if(!file_exists($this->work_path.$val)) {
                 unset($this->fast_cache[$key]);
+                $this->fc_is_modified = true;
+            }
         }
         return $this->fast_cache;
     }
