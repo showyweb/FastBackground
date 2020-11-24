@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.1
+ * @version 5.3.2
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -320,6 +320,8 @@
                     }
 
                     var i_compress_support = /(jpe?g|png|webp)$/i.test(url);
+                    if(!i_compress_support)
+                        cache.set(cached_key, url);
 
                     // if (url === "cache/uploads/houses/391/650xauto_1572543819_interior_2V3-13_1.jpg")
                     //     debugger;
@@ -327,8 +329,6 @@
                     if (!force_reload_image || !i_compress_support) {
                         save_c_url = cache.get(cached_key);
                         var in_fast_cache = false;
-                        if (!save_c_url && !i_compress_support)
-                            save_c_url = url;
                         if (fb.stage_loaded < 1 && (!save_c_url || !i_compress_support) && load_only_visible && browser.isWebpSupport) {
                             var fc_key = url + ':' + end_f_type;
                             if (fb.fast_cache[fc_key] || !i_compress_support) {
