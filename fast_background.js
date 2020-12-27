@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.2
+ * @version 5.3.3
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -273,7 +273,7 @@
                         }
                     }
 
-                    if (!url) {
+                    if (!is_valid_img_url(url)) {
                         ajax_work_minus();
                         return;
                     }
@@ -319,8 +319,8 @@
                         console.log('cached_key: ' + cached_key);
                     }
 
-                    var i_compress_support = /(jpe?g|png|webp)$/i.test(url);
-                    if(!i_compress_support)
+                    var i_compress_support = /\.(jpe?g|png|webp)$/i.test(url);
+                    if (!i_compress_support)
                         cache.set(cached_key, url);
 
                     // if (url === "cache/uploads/houses/391/650xauto_1572543819_interior_2V3-13_1.jpg")
@@ -839,6 +839,9 @@
         return l_id;
     }
 
+    function is_valid_img_url(url) {
+        return /\.(jpe?g|png|webp|gif|svg)($|:| !)/i.test(url);
+    }
 
     function set_f(url, img_obj, fb_selector, is_update_off, ajax_work_not_minus, not_add_fb_loaded) {
         if (fb.is_debug_pws)
@@ -856,54 +859,55 @@
         }
         var type = img_obj && img_obj.is('img') ? b_types.img_src : b_types.b_url;
         try {
-            switch (type) {
-                case b_types.b_url:
-                    var selector = fb_selector;
-                    if (selector)
-                        $(selector).css(type, '');
-                    else {
-                        img_obj[0].style[type] = '';
-                        selector = get_l_id(img_obj);
-                    }
+            if (is_valid_img_url(url))
+                switch (type) {
+                    case b_types.b_url:
+                        var selector = fb_selector;
+                        if (selector)
+                            $(selector).css(type, '');
+                        else {
+                            img_obj[0].style[type] = '';
+                            selector = get_l_id(img_obj);
+                        }
 
-                    if (typeof fb.cssobj.obj[selector] === "undefined")
-                        fb.cssobj.obj[selector] = {};
+                        if (typeof fb.cssobj.obj[selector] === "undefined")
+                            fb.cssobj.obj[selector] = {};
 
 
-                    var is_already_important = !is_already_important && important_selectors.indexOf(selector) !== -1;
-                    var css_url = 'url(' + url + ')' + (is_already_important ? " !important" : "");
-                    var is_replace = false;
-                    if (fb.cssobj.obj[selector][type] && fb.cssobj.obj[selector][type] !== css_url) {
-                        is_replace = true;
-                        fb.cssobj.obj[selector][type] = 'none';
-                        fb.cssobj.obj[selector].backgroundImage = 'none';
+                        var is_already_important = !is_already_important && important_selectors.indexOf(selector) !== -1;
+                        var css_url = 'url(' + url + ')' + (is_already_important ? " !important" : "");
+                        var is_replace = false;
+                        if (fb.cssobj.obj[selector][type] && fb.cssobj.obj[selector][type] !== css_url) {
+                            is_replace = true;
+                            fb.cssobj.obj[selector][type] = 'none';
+                            fb.cssobj.obj[selector].backgroundImage = 'none';
+                            if (!is_update_off)
+                                fb.cssobj.update();
+                        }
+                        fb.cssobj.obj[selector][type] = css_url;
+                        fb.cssobj.obj[selector].backgroundImage = css_url;
                         if (!is_update_off)
                             fb.cssobj.update();
-                    }
-                    fb.cssobj.obj[selector][type] = css_url;
-                    fb.cssobj.obj[selector].backgroundImage = css_url;
-                    if (!is_update_off)
-                        fb.cssobj.update();
-                    /*if (is_replace && $(selector).css('background-image') !== css_url) {
-                        fb.cssobj.obj[selector].backgroundImage = 'url(' + url + ')';
-                        fb.cssobj.update();
-                    }*/
-                    // console.log(selector + " " + fb.cssobj.obj[selector][type]);
-                    break;
-                case b_types.img_src:
-                    // if (url && url.indexOf('def_21f184') !== -1)
-                    //     console.log('x');
-                    if (img_obj.attr(type) !== url)
-                        img_obj.attr(type, url);
-                    requestAnimFrame(function () {
-                        var w_width_ = $(window).width();
-                        var width_ = img_obj.width();
-                        if ((w_width_ > 500 && width_ > w_width_) || (browser.isMobile.anyPhone && width_ < 10)) {
-                            img_obj.css('width', '100%');
-                        }
-                    }, img_obj[0]);
-                    break;
-            }
+                        /*if (is_replace && $(selector).css('background-image') !== css_url) {
+                            fb.cssobj.obj[selector].backgroundImage = 'url(' + url + ')';
+                            fb.cssobj.update();
+                        }*/
+                        // console.log(selector + " " + fb.cssobj.obj[selector][type]);
+                        break;
+                    case b_types.img_src:
+                        // if (url && url.indexOf('def_21f184') !== -1)
+                        //     console.log('x');
+                        if (img_obj.attr(type) !== url)
+                            img_obj.attr(type, url);
+                        requestAnimFrame(function () {
+                            var w_width_ = $(window).width();
+                            var width_ = img_obj.width();
+                            if ((w_width_ > 500 && width_ > w_width_) || (browser.isMobile.anyPhone && width_ < 10)) {
+                                img_obj.css('width', '100%');
+                            }
+                        }, img_obj[0]);
+                        break;
+                }
 
             if (!ajax_work_not_minus && img_obj.hasClass('fb_ev_img_load'))
                 img_obj.trigger('fb_ev_img_load', [url]);
