@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.3
+ * @version 5.3.4
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -323,7 +323,7 @@
                     if (!i_compress_support)
                         cache.set(cached_key, url);
 
-                    // if (url === "cache/uploads/houses/391/650xauto_1572543819_interior_2V3-13_1.jpg")
+                    // if (url === "/img/b.jpg")
                     //     debugger;
 
                     if (!force_reload_image || !i_compress_support) {
@@ -335,16 +335,23 @@
                                 if (i_compress_support)
                                     save_c_url = fb.fast_cache[fc_key];
                                 in_fast_cache = true;
-                                if (is_show(img_obj_, fb_selector))
-                                    set_f(save_c_url, img_obj_, fb_selector, true, true);
+                                if (is_show(img_obj_, fb_selector)) {
+                                    if (!is_valid_img_url(get_f(img_obj_, fb_selector, true)))
+                                        set_f(save_c_url, img_obj_, fb_selector, true, true);
+                                    else
+                                        ajax_callback(url, save_c_url, img_obj_, fb_selector, fb_tmp_attr_p, cached_key, true);
+                                }
                             }
                         }
 
                         if (save_c_url) {
                             if (fb.stage_loaded < 1 && !in_fast_cache) {
-                                if (is_show(img_obj_, fb_selector))
-                                    set_f(save_c_url, img_obj_, fb_selector, true, false, true);
-                                else
+                                if (is_show(img_obj_, fb_selector)) {
+                                    if (!is_valid_img_url(get_f(img_obj_, fb_selector, true)))
+                                        set_f(save_c_url, img_obj_, fb_selector, true, false, true);
+                                    else
+                                        ajax_callback(url, save_c_url, img_obj_, fb_selector, fb_tmp_attr_p, cached_key, true);
+                                } else
                                     ajax_work_minus();
                             } else
                                 ajax_callback(url, save_c_url, img_obj_, fb_selector, fb_tmp_attr_p, cached_key, true);
@@ -937,16 +944,21 @@
         ajax_work_minus();
     }
 
-    function get_f(img_obj, fb_selector) {
+    function get_f(img_obj, fb_selector, is_use_computed_style) {
         var type = img_obj.is('img') ? b_types.img_src : b_types.b_url;
         switch (type) {
             case b_types.b_url:
-                var selector = fb_selector;
-                if (!selector)
-                    selector = get_l_id(img_obj);
-                if (typeof fb.cssobj.obj[selector] === "undefined")
-                    return "";
-                var r = fb.cssobj.obj[selector][type];
+                var r = '';
+                if (!is_use_computed_style) {
+                    var selector = fb_selector;
+                    if (!selector)
+                        selector = get_l_id(img_obj);
+                    if (typeof fb.cssobj.obj[selector] === "undefined")
+                        return "";
+                    r = fb.cssobj.obj[selector][type];
+                } else
+                    r = img_obj.css(type);
+
                 return r ? r.replace(/url\(['"]?|['"]?\)/g, "") : "";
                 break;
             case b_types.img_src:
@@ -1119,7 +1131,7 @@
             if (sel && to_load_fb_sels_p(sel)) {
                 is_new_sel_found = true;
                 url = jq_el.attr('data-url');
-                if (url)
+                if (url && is_valid_img_url(url))
                     io_h_url_p(jq_el, url);
             }
             var fb_sels = jq_el.data('fb_sels');
@@ -1136,7 +1148,8 @@
                             sel_p = sel_p.substr(1);
                         var p_el = jq_el.closest(s_id);
                         url = data_dyn_img_urls.get(p_el, sel_p);
-                        io_h_url_p(jq_el, url, sel);
+                        if (is_valid_img_url(url))
+                            io_h_url_p(jq_el, url, sel);
                     }
                 }
         }
