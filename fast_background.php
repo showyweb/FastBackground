@@ -316,10 +316,10 @@ class fast_background extends fast_background_tools
         $cache_filename_ = $path_cache . '/' . $cache_img_name_;
         $cache_filename = $path_cache . '/' . $cache_img_name;
 
-        $default_min_size = $this->is_mobile_device() ? 500 : 1000;
+        $default_min_size = $this->is_mobile_device() ? 1000 : 1500;
 
-        $skip_zone_size = 10;
-        $skip_zone_start = $size - ($size % $skip_zone_size);
+        $skip_zone_size = 100;
+        $skip_zone_start = $size + ($size % $skip_zone_size);
         $link_start_file_name = $cache_filename_ . $skip_zone_start . '.txt';
 
         $is_cache_filename_reset = !file_exists($link_start_file_name) || !file_exists($this->work_path . "/" . $this->open_txt_file($link_start_file_name, null));
