@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.5
+ * @version 5.3.6
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -529,7 +529,24 @@
                         for (var j = 0; j < postponed.length; j++)
                             ajax_callback(postponed[j].url, data[j], postponed[j].img_obj, postponed[j].fb_selector, postponed[j].fb_tmp_attr_p, postponed[j].cached_key);
                     }
-                }, error_callback);
+                }, function () {
+                    // error_callback();
+                    for (var j = 0; j < postponed.length; j++)
+                        (function (img_obj, url, cover_size, cont_size, def_size, end_f_type, fb_selector, fb_tmp_attr_p, cached_key) {
+                            p_post_ajax({
+                                fast_background: 'get_cached_url',
+                                web_url: url,
+                                cover_size: cover_size,
+                                cont_size: cont_size,
+                                def_size: def_size,
+                                end_type: end_f_type
+                            }, function (data) {
+                                // if (fb_selector && fb_selector.indexOf(".video_thumb:active .is_active_") !== -1)
+                                //     console.log('');
+                                ajax_callback(url, data, img_obj, fb_selector, fb_tmp_attr_p, cached_key);
+                            }, error_callback);
+                        })(postponed[j].img_obj, postponed[j].web_url, postponed[j].cover_size, postponed[j].cont_size, postponed[j].def_size, postponed[j].end_f_type, postponed[j].fb_selector, postponed[j].fb_tmp_attr_p, postponed[j].cached_key);
+                }, 1000);
             }
         }
     };
@@ -704,7 +721,7 @@
         return !/(\/(m_)?def_|^data:)/.test(c_url);
     }
 
-    function p_post_ajax(query_object, callback_function, error_callback) {
+    function p_post_ajax(query_object, callback_function, error_callback, timeout) {
         if (p_post_ajax_work_streams >= fb.max_ajax_post_stream) {
             setTimeout(arguments.callee.bind(this, query_object, callback_function, error_callback), 100);
             return;
@@ -714,45 +731,56 @@
             console.log('ajax begin');
             console.log('pws ' + p_post_ajax_work_streams);
         }
-        var obj = $.post(fb.ajax_url.replace(window.location.hash, ""), query_object,
-            function (data) {
-                p_post_ajax_work_streams--;
-                if (fb.is_debug_pws) {
-                    console.log('ajax end');
-                    console.log('pws ' + p_post_ajax_work_streams);
-                }
-                if (page_unloaded)
-                    return;
+        var data = query_object;
+        var url = fb.ajax_url.replace(window.location.hash, "");
+        var ajax_r = {
+            url: url,
+            method: 'post',
+            data: data,
+            complete: function (jqXHR) {
+                var data = jqXHR.responseText;
+                if (jqXHR.status === 200) {
+                    p_post_ajax_work_streams--;
+                    if (fb.is_debug_pws) {
+                        console.log('ajax end');
+                        console.log('pws ' + p_post_ajax_work_streams);
+                    }
+                    if (page_unloaded)
+                        return;
 
-                var check = "<->ajax_complete<->";
-                var check_result = data.substring(data.length - check.length);
-                if (check_result !== check) {
+                    var check = "<->ajax_complete<->";
+                    var check_result = data.substring(data.length - check.length);
+                    if (check_result !== check) {
+                        if (error_callback)
+                            error_callback(data);
+                        else
+                            console.error("ERROR POST AJAX: " + data);
+                        callback_function(null);
+                        return;
+                    }
+                    data = data.substring(0, data.length - check.length);
+                    if (callback_function)
+                        callback_function(data);
+                } else {
+                    p_post_ajax_work_streams--;
+                    if (fb.is_debug_pws) {
+                        console.error('ajax fail');
+                        console.log('pws ' + p_post_ajax_work_streams);
+                    }
+                    if (page_unloaded)
+                        return;
                     if (error_callback)
-                        error_callback(data);
+                        error_callback("ERROR POST AJAX: <div style='white-space: pre-wrap; word-wrap:break-word;'>" + window.location.href + " " + ($.toJSON ? $.toJSON(query_object) : "") +
+                            "</div><br>ERROR TEXT: " + jqXHR.statusText);
                     else
-                        console.error("ERROR POST AJAX: " + data);
+                        console.error("ERROR POST AJAX: " + jqXHR.statusText);
                     callback_function(null);
-                    return;
                 }
-                data = data.substring(0, data.length - check.length);
-                if (callback_function)
-                    callback_function(data);
-            })
-            .fail(function (xhr, status, error) {
-                p_post_ajax_work_streams--;
-                if (fb.is_debug_pws) {
-                    console.error('ajax fail');
-                    console.log('pws ' + p_post_ajax_work_streams);
-                }
-                if (page_unloaded)
-                    return;
-                if (error_callback)
-                    error_callback("ERROR POST AJAX: <div style='white-space: pre-wrap; word-wrap:break-word;'>" + window.location.href + " " + ($.toJSON ? $.toJSON(query_object) : "") +
-                        "</div><br>ERROR TEXT: " + error);
-                else
-                    console.error("ERROR POST AJAX: " + error);
-                callback_function(null);
-            });
+            }
+        };
+        if (timeout)
+            ajax_r.timeout = timeout;
+        $.ajax(ajax_r);
     }
 
 
