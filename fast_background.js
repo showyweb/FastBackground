@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.6
+ * @version 5.3.7
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -34,7 +34,7 @@
          * @default 8
          * @inner
          * */
-        max_ajax_post_stream: 8,
+        max_ajax_post_stream: 3,
 
         /**Количество оставшихся в очереди ajax вызовов, получающие информацию о изображениях
          * @type number
@@ -133,7 +133,7 @@
                     fb.stage_loaded = 0;
                     break;
                 case 3:
-                    fb.stage_loaded = 1;
+                    fb.stage_loaded = 0;
                     break;
             }
             if (fb.is_debug_pws)
@@ -336,10 +336,11 @@
                                     save_c_url = fb.fast_cache[fc_key];
                                 in_fast_cache = true;
                                 if (is_show(img_obj_, fb_selector)) {
-                                    if (!is_valid_img_url(get_f(img_obj_, fb_selector, true)))
+                                    var current_url = get_f(img_obj_, fb_selector, true);
+                                    if (!is_valid_img_url(current_url))
                                         set_f(save_c_url, img_obj_, fb_selector, true, true);
-                                    else
-                                        ajax_callback(url, save_c_url, img_obj_, fb_selector, fb_tmp_attr_p, cached_key, true);
+                                    else if (img_obj_.hasClass('fb_ev_img_load'))
+                                        img_obj_.trigger('fb_ev_img_load', [current_url]);
                                 }
                             }
                         }
@@ -556,6 +557,7 @@
         page_unloaded = false,
         timeout = null,
         p_post_ajax_work_streams = 0,
+        img_load_work_streams = 0,
         last_update_callbacks = [],
         b_types = {b_url: 'background-image', img_src: 'src'},
         important_selectors = [],
@@ -722,8 +724,8 @@
     }
 
     function p_post_ajax(query_object, callback_function, error_callback, timeout) {
-        if (p_post_ajax_work_streams >= fb.max_ajax_post_stream) {
-            setTimeout(arguments.callee.bind(this, query_object, callback_function, error_callback), 100);
+        if (p_post_ajax_work_streams >= fb.max_ajax_post_stream || img_load_work_streams) {
+            setTimeout(arguments.callee.bind(this, query_object, callback_function, error_callback, timeout), 100);
             return;
         }
         p_post_ajax_work_streams++;
@@ -800,7 +802,8 @@
             loader_stack.push([url, callback, err_callback]);
         }
 
-        var is_wait = p_post_ajax_work_streams >= fb.max_ajax_post_stream;
+        // var is_wait = img_load_work_streams >= fb.max_ajax_post_stream;
+        var is_wait = false;
         if (is_wait && loader_interval === null)
             loader_interval = setInterval(arguments.callee.bind(this, null, null, null, true), 10);
         if (is_wait)
@@ -822,26 +825,26 @@
         }
 
 
-        p_post_ajax_work_streams++;
+        img_load_work_streams++;
         if (fb.is_debug_pws) {
             console.warn("load_img " + url);
-            console.log('pws ' + p_post_ajax_work_streams);
+            console.log('ilws ' + img_load_work_streams);
         }
         var img = new Image();
         img.onload = function () {
-            p_post_ajax_work_streams--;
+            img_load_work_streams--;
             if (fb.is_debug_pws) {
                 console.log("loaded_img " + url);
-                console.log('pws ' + p_post_ajax_work_streams);
+                console.log('ilws ' + img_load_work_streams);
             }
             if (callback)
                 callback(url);
         };
         img.onerror = function (e) {
-            p_post_ajax_work_streams--;
+            img_load_work_streams--;
             if (fb.is_debug_pws) {
                 console.log('img on error ' + url);
-                console.log('pws ' + p_post_ajax_work_streams);
+                console.log('ilws ' + img_load_work_streams);
             }
             e.preventDefault();
             e.stopPropagation();
@@ -894,7 +897,7 @@
         }
         var type = img_obj && img_obj.is('img') ? b_types.img_src : b_types.b_url;
         try {
-            if (is_valid_img_url(url))
+            if (is_valid_img_url(url)) {
                 switch (type) {
                     case b_types.b_url:
                         var selector = fb_selector;
@@ -944,8 +947,9 @@
                         break;
                 }
 
-            if (!ajax_work_not_minus && img_obj.hasClass('fb_ev_img_load'))
+                if (/*!ajax_work_not_minus &&*/ img_obj.hasClass('fb_ev_img_load'))
                 img_obj.trigger('fb_ev_img_load', [url]);
+            }
         } catch (e) {
             console.warn(e.message);
         }
@@ -1025,7 +1029,7 @@
             return (!io || to_load_fb_sels[fb_selector ? fb_selector : get_l_id(img_obj)] || img_obj.hasClass('fb_ignore_io'));
     }
 
-    function ajax_callback(url, curl, img_obj, fb_selector, fb_tmp_attr_p, cached_key, is_cached) {
+    function ajax_callback(url, curl, img_obj, fb_selector, fb_tmp_attr_p, cached_key, is_cached, ajax_work_not_minus) {
 
         function err_c() {
             cache.del(cached_key);
@@ -1054,9 +1058,9 @@
             if (img_obj.data('fb_before_error'))
                 curl += '?is_retry=1';
             loader_img(curl, function () {
-                set_f(curl, img_obj, fb_selector);
+                set_f(curl, img_obj, fb_selector, false, ajax_work_not_minus);
             }, err_c);
-        } else
+        } else if (!ajax_work_not_minus)
             ajax_work_minus();
     }
 
