@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.7
+ * @version 5.3.8
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -237,7 +237,7 @@
                 }
             }
 
-            fb.ajax_is_work = imgs_for_load.length;
+            fb.ajax_is_work += imgs_for_load.length;
 
             if (fb.ajax_is_work < 1) {
                 fb.update_is_worked = false;
@@ -444,7 +444,7 @@
                         if (width <= tmp_width && height <= tmp_height && !img_obj_.hasClass('fb_dynamic_url')) {
                             save_c_url = get_f(img_obj_, fb_selector);
                             save_c_url = save_c_url.replace(" !important", "");
-                            if (save_c_url) {
+                            if (is_valid_img_url(save_c_url)) {
                                 ajax_callback(url, save_c_url, img_obj_, fb_selector, fb_tmp_attr_p, cached_key, true);
                                 return;
                             }
@@ -529,6 +529,10 @@
                         data = data.split(':');
                         for (var j = 0; j < postponed.length; j++)
                             ajax_callback(postponed[j].url, data[j], postponed[j].img_obj, postponed[j].fb_selector, postponed[j].fb_tmp_attr_p, postponed[j].cached_key);
+                    } else {
+                        for (var j = 0; j < postponed.length; j++) {
+                            ajax_work_minus();
+                        }
                     }
                 }, function () {
                     // error_callback();
@@ -720,7 +724,7 @@
     }
 
     function is_full_c_img(c_url) {
-        return !/(\/(m_)?def_|^data:)/.test(c_url);
+        return !/(\/(m_)?def_)/.test(c_url);
     }
 
     function p_post_ajax(query_object, callback_function, error_callback, timeout) {
@@ -1042,15 +1046,14 @@
             err_c();
             return;
         }
-
-        if (curl && !/(^data:)/.test(curl) && !is_cached && is_full_c_img(curl))
-            cache.set(cached_key, curl);
         if (!is_full_c_img(curl)) {
             var na_tmp_width = 'tmp_width' + (fb_selector ? "_c_" + fb_tmp_attr_p : "");
             var na_tmp_height = 'tmp_height' + (fb_selector ? "_c_" + fb_tmp_attr_p : "");
             img_obj.removeData(na_tmp_width);
             img_obj.removeData(na_tmp_height);
-        }
+        } else if (curl && !is_cached)
+            cache.set(cached_key, curl);
+
 
         if (is_show(img_obj, fb_selector)) {
             if (img_obj.hasClass('fb_ev_img_cache_url'))
