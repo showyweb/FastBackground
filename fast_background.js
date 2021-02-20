@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.8
+ * @version 5.3.9
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -882,7 +882,7 @@
     }
 
     function is_valid_img_url(url) {
-        return /\.(jpe?g|png|webp|gif|svg)($|:| !)/i.test(url);
+        return /\.(jpe?g|png|webp|gif|svg)($|:| !|\?)/i.test(url);
     }
 
     function set_f(url, img_obj, fb_selector, is_update_off, ajax_work_not_minus, not_add_fb_loaded) {
@@ -890,18 +890,19 @@
             console.log('set_f-' + url);
         // if (url === "/.fast_background/1/16/16c5c65c2deaaa0fd86fad3c6a062dc90ad30bc9_18_604.webp")
         //     debugger;
-        if (is_full_c_img(url)) {
-            if (img_obj.hasClass('fb_loaded')) {
-                img_obj.removeClass('fb_loaded');
-                img_obj.addClass('fb_dynamic_url');
+        if (is_valid_img_url(url)) {
+            if (is_full_c_img(url)) {
+                if (img_obj.hasClass('fb_loaded')) {
+                    img_obj.removeClass('fb_loaded');
+                    img_obj.addClass('fb_dynamic_url');
+                }
+                if (!img_obj.hasClass('fb_dynamic_url') && !ajax_work_not_minus && !not_add_fb_loaded)
+                    img_obj.addClass('fb_loaded');
+                img_obj.data('fb_last_load_url', url);
             }
-            if (!img_obj.hasClass('fb_dynamic_url') && !ajax_work_not_minus && !not_add_fb_loaded)
-                img_obj.addClass('fb_loaded');
-            img_obj.data('fb_last_load_url', url);
-        }
-        var type = img_obj && img_obj.is('img') ? b_types.img_src : b_types.b_url;
-        try {
-            if (is_valid_img_url(url)) {
+            var type = img_obj && img_obj.is('img') ? b_types.img_src : b_types.b_url;
+            try {
+
                 switch (type) {
                     case b_types.b_url:
                         var selector = fb_selector;
@@ -952,12 +953,12 @@
                 }
 
                 if (/*!ajax_work_not_minus &&*/ img_obj.hasClass('fb_ev_img_load'))
-                img_obj.trigger('fb_ev_img_load', [url]);
-            }
-        } catch (e) {
-            console.warn(e.message);
-        }
+                    img_obj.trigger('fb_ev_img_load', [url]);
 
+            } catch (e) {
+                console.warn(e.message);
+            }
+        }
         if (!ajax_work_not_minus)
             ajax_work_minus();
     }
