@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.9
+ * @version 5.3.10
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -684,12 +684,9 @@
             return !!navigator.userAgent.match(/iphone|ipod/i) || (browser.isMobile.Android && !!navigator.userAgent.match(/mobile/i)) || (browser.isMobile.BlackBerry && !navigator.userAgent.match(/tablet/i)) || browser.isMobile.Windows;
         })();
         browser.isRetinaDisplay = (function () {
-            $('head').append('<style id="FB_BS" type="text/css"> .FB_BS_is_retina {display: none; opacity: 0; } @media only screen and (-Webkit-min-device-pixel-ratio: 1.5), only screen and (-moz-min-device-pixel-ratio: 1.5), only screen and (-o-min-device-pixel-ratio: 3 / 2), only screen and (min-device-pixel-ratio: 1.5), only screen and (-webkit-min-device-pixel-ratio: 3) {.FB_BS_is_retina {opacity: 1; }} ' + '</style>');
-            var el = $("<div id='test_FB_BS' class='FB_BS_is_retina'></div>");
-            $("body").append(el);
-            var is_retina = el.css('opacity') == 1;
-            el.remove();
-            $("#FB_BS").remove();
+
+            var is_retina = window.devicePixelRatio > 1;
+
             return is_retina;
         })();
         /*browser.isMaskImageSupport = (function () {
