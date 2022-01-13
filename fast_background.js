@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 5.3.10
+ * @version 5.4.0
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -625,6 +625,97 @@
                 fast_background.update();
             }
         });
+
+        if (fb.cssobj === null) {
+            fb.cssobj = cssobj({});
+        }
+
+        var sub_append_obj = {
+            'from': {
+                'outline-color': '#fff'
+            },
+            'to': {
+                'outline-color': '#000'
+            }
+        };
+        var append_obj = {
+            '@keyframes nodeInserted': sub_append_obj,
+            '@-moz-keyframes nodeInserted': sub_append_obj,
+            '@-webkit-keyframes nodeInserted': sub_append_obj,
+            '@-ms-keyframes nodeInserted': sub_append_obj,
+            '@-o-keyframes nodeInserted': sub_append_obj,
+            '.fast_background': {
+                'animation-duration': '0.001s',
+                'animation-name': 'nodeInserted'
+            }
+        };
+        fb.cssobj.obj = $.extend(fb.cssobj.obj, append_obj);
+        fb.cssobj.update();
+
+        var insertListener_timeout = null;
+
+        function insertListener(event) {
+            if (event.animationName === "nodeInserted") {
+                clearTimeout(insertListener_timeout);
+                insertListener_timeout = setTimeout(nodeInserted_handle, 100);
+            }
+        }
+
+        document.addEventListener("animationstart", insertListener, false);
+        document.addEventListener("MSAnimationStart", insertListener, false);
+        document.addEventListener("webkitAnimationStart", insertListener, false);
+
+        function nodeInserted_handle() {
+            // console.warn("nodeInserted!");
+            fast_background.update();
+        }
+
+        //polyfill
+        (function () {
+            var fb_count = 0,
+                display_not_none = 0,
+                overflow_not_hidden = 0,
+                _scrollWidth = 0;
+            var polyfill_ni_interval = setInterval(function () {
+                if (insertListener_timeout !== null) {
+                    clearInterval(polyfill_ni_interval);
+                    // console.warn('polyfill process exit');
+                    return false;
+                }
+
+                // console.warn('polyfill process use');
+                if (document.scrollingElement && document.scrollingElement.scrollWidth !== _scrollWidth) {
+                    _scrollWidth = document.scrollingElement.scrollWidth;
+                    nodeInserted_handle();
+                    return true;
+                }
+
+                var new_fb_count = $(".fast-background").length;
+                if (new_fb_count !== fb_count) {
+                    fb_count = new_fb_count;
+                    nodeInserted_handle();
+                    return true;
+                }
+
+                var new_display_not_none = 0;
+                var new_overflow_not_hidden = 0;
+
+                $('*').each(function () {
+                    var _this = $(this);
+                    if (_this.css('display') !== 'none')
+                        new_display_not_none++;
+                    if (_this.css('overflow') !== 'hidden')
+                        new_overflow_not_hidden++;
+                });
+                if (new_display_not_none !== display_not_none || new_overflow_not_hidden !== overflow_not_hidden) {
+                    display_not_none = new_display_not_none;
+                    overflow_not_hidden = new_overflow_not_hidden;
+                    nodeInserted_handle();
+                    return true;
+                }
+            }, 2000);
+        })();
+
     });
 
 
@@ -1198,4 +1289,6 @@
 
 
     var io = 'IntersectionObserver' in window ? new IntersectionObserver(io_handler, {rootMargin: "0px 1000px " + (window_h + window_h / 2) + "px 1000px"}) : null;
+
+
 })();
