@@ -1,4 +1,21 @@
 <?php
+
+function copy_dir($src, $dst)
+{
+    $dir = opendir($src);
+    if (!is_dir($dst))
+        @mkdir($dst);
+    while (($file = readdir($dir))) {
+        if (($file != '.') && ($file != '..')) {
+            if (is_dir($src . '/' . $file))
+                copy_dir($src . '/' . $file, $dst . '/' . $file);
+            else
+                copy($src . '/' . $file, $dst . '/' . $file);
+        }
+    }
+    closedir($dir);
+}
+
 $destination_folder = $argv[1];
 if (empty($destination_folder))
     throw new \Exception("Please specify a destination folder");
@@ -27,3 +44,5 @@ foreach (
     }
     copy($src_dir . '/' . $f_name, $destination_folder . '/' . $f_name);
 }
+
+copy_dir($src_dir . '/third_party_libs', $destination_folder . '/third_party_libs');

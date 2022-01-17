@@ -1,8 +1,0 @@
-div { font-size: 12px; color: blue; }
-@media (max-width: 800px) { 
-  .active_james_ { color: purple; }
-  div .active_james_ { color: red; }
-}
-@media (max-width: 800px) and (min-width: 100px) { 
-  div .active_james_ { color: green; }
-}

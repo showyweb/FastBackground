@@ -19,8 +19,8 @@ Fast Background - это интеллектуальный JavaScript загру�
 <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
     <title>Новая страница</title>
-    <script type="text/javascript" src="third_party_libs/jquery-3.2.1.min.js"></script>
-    <script type="text/javascript" src="third_party_libs/cssobj/dist/cssobj.min.js"></script>
+    <script type="text/javascript" src="src/third_party_libs/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="src/third_party_libs/cssobj/cssobj.min.js"></script>
     <script type="text/javascript" src="src/index.php?fast_background=fc_script"></script>
     <script type="text/javascript" src="src/fast_background.min.js"></script>
 </head>

@@ -1,2 +1,0 @@
-div { font-size: 12px; }
-div::before, div::after { content: '---'; }
