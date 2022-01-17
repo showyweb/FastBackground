@@ -19,17 +19,17 @@ Fast Background - это интеллектуальный JavaScript загру�
 <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
     <title>Новая страница</title>
-    <script type="text/javascript" src="src/third_party_libs/jquery-3.2.1.min.js"></script>
-    <script type="text/javascript" src="src/third_party_libs/cssobj/cssobj.min.js"></script>
-    <script type="text/javascript" src="src/index.php?fast_background=fc_script"></script>
-    <script type="text/javascript" src="src/fast_background.min.js"></script>
+    <script type="text/javascript" src="/js/FastBackground/third_party_libs/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="/js/FastBackground/third_party_libs/cssobj/cssobj.min.js"></script>
+    <script type="text/javascript" src="/js/FastBackground/index.php?fast_background=fc_script"></script>
+    <script type="text/javascript" src="/js/FastBackground/fast_background.min.js"></script>
 </head>
 <body class="fast_background" data-urls="{'.class_block1':'img/class_block1.jpg'}">
 <div class="class_block1 fast_background"></div>
 <div class="class_block1 fast_background" data-url="img/block2.jpg !important"></div>
 <div class="fast_background" data-url="img/block3.jpg"></div>
 <script>
-    fast_background.ajax_url = "/FastBackground/index.php";
+    fast_background.ajax_url = "/js/FastBackground/index.php";
     fast_background.update();
 </script>
 </body>
