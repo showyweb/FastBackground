@@ -17,9 +17,7 @@ class tools
 
     protected $path_cache = null;
 
-    protected $web_relative_path = null;
-
-
+    protected $web_relative_path = '';
 
     private $fast_cache = null;
     private $fc_file = null;

@@ -31,10 +31,10 @@ class fb extends tools
         $this->path_cache = $path_cache;
         $root_path = !is_null($root_path) ? $root_path : $_SERVER["DOCUMENT_ROOT"];
         $root_path = str_replace("\\", "/", $root_path);
-        $this->web_relative_path = str_replace($root_path, "", $this->work_path);
+        /*$this->web_relative_path = str_replace($root_path, "", $this->work_path);
         if (!empty($this->web_relative_path))
             $this->web_relative_path = '/' . $this->web_relative_path . '/';
-        $this->web_relative_path = $this->clear_slashes($this->web_relative_path);
+        $this->web_relative_path = $this->clear_slashes($this->web_relative_path);*/
         /*var_export($this->work_path);
         echo "<br>";
         var_export($this->path_cache);
