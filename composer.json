@@ -1,6 +1,6 @@
 {
     "name": "showyweb/fast_background",
-    "description": "Интеллектуальный JavaScript загрузчик изображений для веб проектов (поддерживает WebP и IntersectionObserver)",
+    "description": "Интеллектуальный JavaScript загрузчик изображений для веб-проектов (поддерживает WebP и IntersectionObserver)",
     "type": "library",
     "license": "MIT",
     "authors": [
