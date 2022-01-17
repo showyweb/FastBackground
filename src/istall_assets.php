@@ -44,5 +44,8 @@ foreach (
     }
     copy($src_dir . '/' . $f_name, $destination_folder . '/' . $f_name);
 }
-
+if (!file_exists($destination_folder . '/.gitignore'))
+    copy($src_dir . '/gitignore', $destination_folder . '/.gitignore');
+else
+    echo ".gitignore skipping. File already exist\n";
 copy_dir($src_dir . '/third_party_libs', $destination_folder . '/third_party_libs');
