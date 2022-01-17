@@ -54,7 +54,7 @@ composer require showyweb/fast_background
 - Первый вызов `fast_background.update()` выполнять перед закрывающим тегом body
 - Использовать FastBackground для всех картинок на странице
 
-Если нужно отобразить картинку максимально быстро в первичной области видимости, то на php можно использовать функцию `fb_cache`. Чтобы функция была доступна подключите файл **public/js/FastBackground/get_img_without_js.php** 
+Если нужно отобразить картинку максимально быстро в первичной области видимости, то на php можно использовать функцию `fb_cache`. Чтобы функция была доступна, подключите файл **public/js/FastBackground/get_img_without_js.php** 
 
 ### Дополнительная документация доступна в файлах
  - public/js/FastBackground/fast_background.js (JSDoc)
