@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "grunt": "node_modules/.bin/grunt"
+  },
+  "devDependencies": {
+    "grunt": "^1.4.1",
+    "grunt-cli": "^1.4.3",
+    "grunt-contrib-uglify": "^3.4.0",
+    "uglify-save-license": "^0.4.1"
+  }
+}

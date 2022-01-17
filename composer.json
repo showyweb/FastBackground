@@ -1,0 +1,21 @@
+{
+    "name": "showyweb/fast_background",
+    "description": "Интеллектуальный JavaScript загрузчик изображений для веб проектов (поддерживает WebP и IntersectionObserver)",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "SHOWYWeb",
+            "homepage": "https://github.com/showyweb"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=7.1.0"
+    },
+    "autoload": {
+        "classmap": [
+             "src/"
+        ]
+    }
+}

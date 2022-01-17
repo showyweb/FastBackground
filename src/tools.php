@@ -1,6 +1,7 @@
 <?php
 
-abstract class fast_background_JPEG_QUALITY
+namespace showyweb\fast_background;
+abstract class JPEG_QUALITY
 {
     const HIGHEST = 100;
     const HIGH = 85;
@@ -8,7 +9,7 @@ abstract class fast_background_JPEG_QUALITY
     const LOW = 0;
 }
 
-class fast_background_tools
+class tools
 {
     protected $work_path = null;
 
@@ -18,7 +19,7 @@ class fast_background_tools
 
     protected $web_relative_path = null;
 
-    private $lock_file = null;
+
 
     private $fast_cache = null;
     private $fc_file = null;
@@ -26,16 +27,15 @@ class fast_background_tools
 
     function __construct()
     {
-        $this->lock_file = $this->path_cache . '/compressing_img_lock';
-        $this->lock_file = $this->clear_slashes($this->lock_file);
+        $this->set_lock_file();
     }
 
     private function fc_init()
     {
-        if(!is_null($this->fast_cache))
+        if (!is_null($this->fast_cache))
             return;
         $loc = $_SERVER['REQUEST_URI'];
-        if(stripos($loc, 'FastBackground') !== false && isset($_SERVER['HTTP_REFERER']))
+        if (stripos($loc, 'FastBackground') !== false && isset($_SERVER['HTTP_REFERER']))
             $loc = $_SERVER['HTTP_REFERER'];
         $loc = preg_replace('/\\?.*/u', '', $loc);
         $this->fc_file = $this->path_cache . '/fast_cache_' . ($this->is_mobile_device() ? 'm_' : '') . sha1($loc);
@@ -44,9 +44,9 @@ class fast_background_tools
 
     function fc_set($key, $val)
     {
-        if(is_null($this->fast_cache))
+        if (is_null($this->fast_cache))
             $this->fc_init();
-        if(isset($this->fast_cache[$key]))
+        if (isset($this->fast_cache[$key]))
             return;
         $this->fc_is_modified = true;
         $this->fast_cache[$key] = $val;
@@ -54,10 +54,10 @@ class fast_background_tools
 
     function fc_get()
     {
-        if(is_null($this->fast_cache))
+        if (is_null($this->fast_cache))
             $this->fc_init();
         foreach ($this->fast_cache as $key => $val) {
-            if(!file_exists($this->work_path.$val)) {
+            if (!file_exists($this->work_path . $val)) {
                 unset($this->fast_cache[$key]);
                 $this->fc_is_modified = true;
             }
@@ -67,14 +67,15 @@ class fast_background_tools
 
     function __destruct()
     {
-        if($this->fc_is_modified)
+        if ($this->fc_is_modified)
             $this->save_to_text_file($this->fc_file, serialize($this->fast_cache), null);
     }
 
-    function is_webp_support_from_http_header(){
-        if(!isset($_SERVER['HTTP_ACCEPT']))
+    function is_webp_support_from_http_header(): bool
+    {
+        if (!isset($_SERVER['HTTP_ACCEPT']))
             return false;
-        if(strpos($_SERVER['HTTP_ACCEPT'], 'image/webp' ) !== false)
+        if (strpos($_SERVER['HTTP_ACCEPT'], 'image/webp') !== false)
             return true;
         else
             return false;
@@ -83,27 +84,26 @@ class fast_background_tools
     protected function error($mes)
     {
         $this->unlock();
-        throw new exception($mes);
+        throw new \exception($mes);
     }
 
     protected function clear_slashes($path)
     {
-        $path = preg_replace('/\\/+/u', '/', $path);
-        return $path;
+        return preg_replace('/\\/+/u', '/', $path);
     }
 
-    private function utf8_str_split($str)
+    private function utf8_str_split($str): ?array
     {
         $split = 1;
         $array = array();
         for ($i = 0; $i < strlen($str);) {
             $value = ord($str[$i]);
-            if($value > 127) {
-                if($value >= 192 && $value <= 223)
+            if ($value > 127) {
+                if ($value >= 192 && $value <= 223)
                     $split = 2;
-                elseif($value >= 224 && $value <= 239)
+                elseif ($value >= 224 && $value <= 239)
                     $split = 3;
-                elseif($value >= 240 && $value <= 247)
+                elseif ($value >= 240 && $value <= 247)
                     $split = 4;
             } else {
                 $split = 1;
@@ -156,23 +156,23 @@ class fast_background_tools
     protected function xss_filter($variable, $max_level = false)
     {
         $xss_filtered_arr = &$this->xss_filtered_arr;
-        if($variable === "*")
+        if ($variable === "*")
             return $variable;
 
-        if(in_array($variable, $xss_filtered_arr))
+        if (in_array($variable, $xss_filtered_arr))
             return $variable;
 
         $new_variable_for_sql = null;
-        if(is_null($variable))
+        if (is_null($variable))
             return null;
-        if(is_array($variable)) {
+        if (is_array($variable)) {
             foreach ($variable as $key => $val) {
                 $variable[$key] = $this->xss_filter($val);
             }
 
             return $variable;
         }
-        if(!$max_level)
+        if (!$max_level)
             $variable = $this->characters_escape($variable);
         $characters_allowed = "йцукеёнгшщзхъфывапролджэячсмитьбюqwertyuiopasdfghjklzxcvbnm";
         $characters_allowed .= mb_strtoupper($characters_allowed, 'UTF-8') . "1234567890-_" . ($max_level ? "" : ".,&#;@/=") . " ";
@@ -183,7 +183,7 @@ class fast_background_tools
         $characters_allowed_length = count($characters_allowed_arr);
         for ($i = 0; $i < $variable_for_sql_length; $i++)
             for ($i2 = 0; $i2 < $characters_allowed_length; $i2++)
-                if($variable_for_sql_arr[$i] == $characters_allowed_arr[$i2])
+                if ($variable_for_sql_arr[$i] == $characters_allowed_arr[$i2])
                     $new_variable_for_sql .= $characters_allowed_arr[$i2];
         $new_variable_for_sql = preg_replace('/http(s)?\/\//ui', 'http$1://', $new_variable_for_sql);
         $xss_filtered_arr[] = $new_variable_for_sql;
@@ -203,13 +203,13 @@ class fast_background_tools
     protected function open_txt_file($path, $extn = 'txt')
     {
         $text = "";
-        if($extn !== null)
+        if ($extn !== null)
             $path .= '.' . $extn;
-        if(!file_exists($path))
+        if (!file_exists($path))
             return null;
         $lines = file($path);
         foreach ($lines as $line) {
-            if(isset($text))
+            if (isset($text))
                 $text .= $line;
             else
                 $text = $line;
@@ -218,9 +218,9 @@ class fast_background_tools
         return $text;
     }
 
-    protected function save_to_text_file($path, $text, $extn = 'txt')
+    protected function save_to_text_file($path, $text, $extn = 'txt'): bool
     {
-        if($extn == null)
+        if ($extn == null)
             $extn = '';
         else
             $extn = '.' . $extn;
@@ -228,26 +228,26 @@ class fast_background_tools
         $path = $this->clear_slashes($path);
 
         $file = fopen($path . ".tmp", "w");
-        if(!$file) {
+        if (!$file) {
             return false;
         } else {
             fputs($file, $text);
         }
         fclose($file);
-        if(!file_exists($path . ".tmp")) {
+        if (!file_exists($path . ".tmp")) {
             unset($text);
             return false;
         }
-        if(sha1($text) == sha1_file($path . ".tmp")) {
-            if(file_exists($path . $extn))
+        if (sha1($text) == sha1_file($path . ".tmp")) {
+            if (file_exists($path . $extn))
                 unlink($path . $extn);
-            if(!file_exists($path . ".tmp")) {
+            if (!file_exists($path . ".tmp")) {
                 unset($text);
                 return false;
             }
             rename($path . ".tmp", $path . $extn);
         } else {
-            if(!file_exists($path . ".tmp")) {
+            if (!file_exists($path . ".tmp")) {
                 unset($text);
                 return false;
             }
@@ -262,10 +262,10 @@ class fast_background_tools
     protected function is_mobile_device()
     {
         $is_mobile = false;
-        if(isset($_SESSION['is_mobile']))
+        if (isset($_SESSION['is_mobile']))
             $is_mobile = $_SESSION['is_mobile'];
         else {
-            $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : "";
+            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? "";
 
             $Android = preg_match('/Android/ui', $user_agent) ? true : false;
             $BlackBerry = preg_match('/BlackBerry|BB/ui', $user_agent) ? true : false;
@@ -275,14 +275,14 @@ class fast_background_tools
 
             $is_mobile = ($Android || $BlackBerry || $iOS || $opera_mini || $Windows);
             $is_tablet = $is_mobile ? ((preg_match('/ipad/ui', $user_agent) ? true : false) || ($Android && !(preg_match('/mobile/ui', $user_agent) ? true : false)) || ($BlackBerry && (preg_match('/tablet/ui', $user_agent) ? true : false))) : false;
-            if($is_tablet)
+            if ($is_tablet)
                 $is_mobile = false;
         }
 
         return $is_mobile;
     }
 
-    private function is_os_windows()
+    private function is_os_windows(): bool
     {
         return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
     }
@@ -293,7 +293,7 @@ class fast_background_tools
      * @return object
      *
      */
-    protected function get_size($web_url)
+    protected function get_size(string $web_url)
     {
 
         $filename = "/" . $web_url;
@@ -310,19 +310,31 @@ class fast_background_tools
         $filename = $this->work_path . $filename;
         $filename = $this->clear_slashes($filename);
         $imgInfo = getimagesize($filename);
-        if($imgInfo[0] == 0 || $imgInfo[1] == 0)
+        if ($imgInfo[0] == 0 || $imgInfo[1] == 0)
             $this->error('Вы пытаетесь обработать не поддерживаемый формат файла, загрузить возможно только изображения в формате jpg, jpeg, png и webp…');
         return $imgInfo[2];
     }
 
 
+    protected $use_lock_file = false;
+    private $lock_file = null;
+    protected function set_lock_file($prefix = '')
+    {
+        if (!$this->use_lock_file)
+            return;
+        $this->lock_file = $this->path_cache . "/{$prefix}_compressing_img_lock";
+        $this->lock_file = $this->clear_slashes($this->lock_file);
+    }
+
     private function lock()
     {
+        if (!$this->use_lock_file)
+            return;
         //echo "<br>loc file: ".$this->lock_file;
         $lock_file = $this->lock_file;
         try {
             while (file_exists($lock_file)) {
-                if(date("i") != date("i", filemtime($lock_file))) {
+                if (date("i") != date("i", filemtime($lock_file))) {
                     unlink($lock_file);
                     break;
                 } else {
@@ -331,22 +343,24 @@ class fast_background_tools
             }
             $this->save_to_text_file($lock_file, '', null);
             chmod($lock_file, 0660);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->unlock();
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->unlock();
         }
     }
 
     private function unlock()
     {
+        if (!$this->use_lock_file)
+            return;
         $lock_file = $this->lock_file;
         try {
-            if(file_exists($lock_file))
+            if (file_exists($lock_file))
                 unlink($lock_file);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
 
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
 
         }
     }
@@ -358,14 +372,14 @@ class fast_background_tools
      * @param int $jpeg_quality
      * @param bool|false $revert_size_coefficient Высота или ширина будет не меньше $size
      * @return bool
-     * @throws exception
+     * @throws \exception
      */
-    function compressing_img($size, $web_url, $end_type = null, $jpeg_quality = fast_background_JPEG_QUALITY::HIGHEST, $revert_size_coefficient = false)
+    function compressing_img($size, $web_url, $end_type = null, int $jpeg_quality = JPEG_QUALITY::HIGHEST, bool $revert_size_coefficient = false)
     {
         $this->lock();
         $filename = null;
         try {
-            if(is_null($size)) $size = 3840;
+            if (is_null($size)) $size = 3840;
             $filename = "/" . $web_url;
             $filename = $this->work_path . $filename;
             $filename = $this->clear_slashes($filename);
@@ -373,15 +387,15 @@ class fast_background_tools
             $imgInfo = getimagesize($filename);
             list($width, $height) = $imgInfo;
             $max_image_size = 10000;
-            if($width > $max_image_size || $height > $max_image_size) {
+            if ($width > $max_image_size || $height > $max_image_size) {
                 unlink($filename);
                 $this->error('Невозможно обработать изображение, так как высота или ширина больше чем ' . $max_image_size . ' пикселей, слишком большие изображения нельзя обработать на сервере');
             }
 
-            if($imgInfo[0] == 0 || $imgInfo[1] == 0)
+            if ($imgInfo[0] == 0 || $imgInfo[1] == 0)
                 $this->error('Вы пытаетесь обработать не поддерживаемый формат файла, загрузить возможно только изображения в формате jpg, jpeg, png и webp…');
             $max_php_image_size = 3840;
-            if($width > $max_php_image_size || $height > $max_php_image_size) {
+            if ($width > $max_php_image_size || $height > $max_php_image_size) {
                 $exec_file_name = escapeshellarg($filename);
                 $cur_img_type = null;
                 switch ($imgInfo[2]) {
@@ -400,20 +414,20 @@ class fast_background_tools
                 }
                 $exec_command = ($this->is_os_windows() ? "magick " : "") . "convert -limit memory 50MB -limit map 50MB -limit area 50MB $cur_img_type:$exec_file_name -scale $max_php_image_size -quality $jpeg_quality $cur_img_type:$exec_file_name";
                 exec($exec_command, $output, $return_var);
-                if($return_var != 0)
+                if ($return_var != 0)
                     $this->error("Ошибка сжатия файла $filename с помощью imagemagick");
                 unset($imgInfo);
                 while (true) {
                     try {
                         $imgInfo = getimagesize($filename);
                         break;
-                    } catch (Exception $ex) {
+                    } catch (\Exception $ex) {
                         sleep(1);
-                        if(!file_exists($filename))
+                        if (!file_exists($filename))
                             $this->error("Ошибка обработки изображения!");
-                    } catch (Throwable  $ex) {
+                    } catch (\Throwable  $ex) {
                         sleep(1);
-                        if(!file_exists($filename))
+                        if (!file_exists($filename))
                             $this->error("Ошибка обработки изображения!");
                     }
                 }
@@ -422,16 +436,16 @@ class fast_background_tools
             $exif = null;
             try {
                 $exif = @exif_read_data($filename);
-            } catch (Exception $ex) {
+            } catch (\Exception $ex) {
 
-            } catch (Throwable  $ex) {
+            } catch (\Throwable  $ex) {
 
             }
 
             $coefficient = $size;
-            if(($width > $coefficient || $height > $coefficient) && $coefficient != 0) {
-                if($revert_size_coefficient) {
-                    if($width < $height) {
+            if (($width > $coefficient || $height > $coefficient) && $coefficient != 0) {
+                if ($revert_size_coefficient) {
+                    if ($width < $height) {
                         $w_ = $width / $coefficient;
                         $w = $width / $w_;
                         $h = $height / $w_;
@@ -439,9 +453,9 @@ class fast_background_tools
                         $h_ = $height / $coefficient;
                         $w = $width / $h_;
                         $h = $height / $h_;
-                    };
+                    }
                 } else {
-                    if($width >= $height) {
+                    if ($width >= $height) {
                         $w_ = $width / $coefficient;
                         $w = $width / $w_;
                         $h = $height / $w_;
@@ -466,17 +480,17 @@ class fast_background_tools
             $source = null;
             switch ($imgInfo[2]) {
                 case IMAGETYPE_JPEG:
-                    if(!($source = imagecreatefromjpeg($filename)))
+                    if (!($source = imagecreatefromjpeg($filename)))
                         $this->error("Ошибка обработки изображения!");
                     break;
 
                 case IMAGETYPE_PNG:
-                    if(!($source = imagecreatefrompng($filename)))
+                    if (!($source = imagecreatefrompng($filename)))
                         $this->error("Ошибка обработки изображения!");
                     break;
                 case IMAGETYPE_WEBP:
 
-                    if(!($source = imagecreatefromwebp($filename)))
+                    if (!($source = imagecreatefromwebp($filename)))
                         $this->error("Ошибка обработки изображения!");
                     break;
                 default:
@@ -489,15 +503,15 @@ class fast_background_tools
             switch ($end_type) {
                 case IMAGETYPE_JPEG:
                     $is_rotate = false;
-                    if(isset($exif['Orientation'])) {
-                        if($exif['Orientation'] == 3) {
+                    if (isset($exif['Orientation'])) {
+                        if ($exif['Orientation'] == 3) {
                             $is_rotate = true;
                             $source = imagerotate($source, 180, 0);
-                        } elseif($exif['Orientation'] == 6)
+                        } elseif ($exif['Orientation'] == 6)
                             $source = imagerotate($source, 270, 0);
-                        elseif($exif['Orientation'] == 8)
+                        elseif ($exif['Orientation'] == 8)
                             $source = imagerotate($source, 90, 0);
-                        if($exif['Orientation'] == 6 || $exif['Orientation'] == 8) {
+                        if ($exif['Orientation'] == 6 || $exif['Orientation'] == 8) {
                             $is_rotate = true;
                             $temp = $imgInfo[0];
                             $imgInfo[0] = $imgInfo[1];
@@ -512,33 +526,33 @@ class fast_background_tools
                             $newheight_2 = $tmp;
                         }
                     }
-                    if($original_compressing && $end_type == $imgInfo[2] && !$is_rotate && $jpeg_quality == fast_background_JPEG_QUALITY::HIGHEST)
+                    if ($original_compressing && $end_type == $imgInfo[2] && !$is_rotate && $jpeg_quality == JPEG_QUALITY::HIGHEST)
                         break;
                     $white = imagecolorallocate($img, 255, 255, 255);
                     imagefill($img, 0, 0, $white);
-                    if(!imagecopyresampled($img, $source, 0, 0, 0, 0, $newwidth_2, $newheight_2, $width, $height)) error("Ошибка обработки изображения!");
+                    if (!imagecopyresampled($img, $source, 0, 0, 0, 0, $newwidth_2, $newheight_2, $width, $height)) $this->error("Ошибка обработки изображения!");
                     imagejpeg($img, $filename, $jpeg_quality);
                     break;
 
                 case IMAGETYPE_PNG:
                 case IMAGETYPE_WEBP:
-                    if($original_compressing && $end_type == $imgInfo[2] && $jpeg_quality == fast_background_JPEG_QUALITY::HIGHEST)
+                    if ($original_compressing && $end_type == $imgInfo[2] && $jpeg_quality == JPEG_QUALITY::HIGHEST)
                         break;
                     imagealphablending($img, false);
                     imagesavealpha($img, true);
                     $transparent = imagecolorallocatealpha($img, 255, 255, 255, 127);
                     imagefilledrectangle($img, 0, 0, $imgInfo[0], $imgInfo[1], $transparent);
-                    if(!$original_compressing) {
-                        if(!imagecopyresampled($img, $source, 0, 0, 0, 0, $newwidth_2, $newheight_2, $imgInfo[0], $imgInfo[1])) $this->error("Ошибка обработки изображения!");
+                    if (!$original_compressing) {
+                        if (!imagecopyresampled($img, $source, 0, 0, 0, 0, $newwidth_2, $newheight_2, $imgInfo[0], $imgInfo[1])) $this->error("Ошибка обработки изображения!");
                     } else {
-                        if(!imagecopyresampled($img, $source, 0, 0, 0, 0, $imgInfo[0], $imgInfo[1], $imgInfo[0], $imgInfo[1])) $this->error("Ошибка обработки изображения!");
+                        if (!imagecopyresampled($img, $source, 0, 0, 0, 0, $imgInfo[0], $imgInfo[1], $imgInfo[0], $imgInfo[1])) $this->error("Ошибка обработки изображения!");
                     }
 
                     switch ($end_type) {
                         case IMAGETYPE_PNG:
                             $jpeg_quality /= 10;
                             $jpeg_quality = intval($jpeg_quality);
-                            if($jpeg_quality > 9)
+                            if ($jpeg_quality > 9)
                                 $jpeg_quality = 9;
                             imagepng($img, $filename, $jpeg_quality);
                             break;
@@ -548,18 +562,18 @@ class fast_background_tools
                     }
                     break;
             }
-            if(isset($source))
+            if (isset($source))
                 imagedestroy($source);
-            if(isset($im))
+            if (isset($im))
                 imagedestroy($im);
-            if(isset($img))
+            if (isset($img))
                 imagedestroy($img);
-        } catch (Exception $e) {
-            if(file_exists($filename))
+        } catch (\Exception $e) {
+            if (file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());
-        } catch (Throwable  $e) {
-            if(file_exists($filename))
+        } catch (\Throwable  $e) {
+            if (file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());
         } finally {
@@ -580,14 +594,14 @@ class fast_background_tools
             $exec_file_name = escapeshellarg($filename);
             $exec_command = "cwebp -q $quality $exec_file_name -o $exec_file_name";
             exec($exec_command, $output, $return_var);
-            if($return_var != 0)
+            if ($return_var != 0)
                 $this->error("Ошибка сжатия файла $filename с помощью команды exec('cwebp...');");
-        } catch (Exception $e) {
-            if(file_exists($filename))
+        } catch (\Exception $e) {
+            if (file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());
-        } catch (Throwable  $e) {
-            if(file_exists($filename))
+        } catch (\Throwable  $e) {
+            if (file_exists($filename))
                 unlink($filename);
             $this->error($e->getMessage());
         } finally {
@@ -597,11 +611,13 @@ class fast_background_tools
 }
 
 /*Заглушка для инспектора кода в IDE*/
-if(false && !function_exists('imagecreatefromwebp')){
+if (false && !function_exists('imagecreatefromwebp')) {
     /**
      * @param $filename
      * @return resource|void
      * @link http://php.net/manual/ru/function.imagecreatefromwebp.php
      */
-    function imagecreatefromwebp($filename){}
+    function imagecreatefromwebp($filename)
+    {
+    }
 }

@@ -1,21 +1,24 @@
 <?php
 
-require_once "fast_background_tools.php";
+namespace showyweb\fast_background;
+require_once "tools.php";
 
-class fast_background extends fast_background_tools
+class fb extends tools
 {
-    /**
-     * @param null|string $relative_path_for_cache [optional] Относительный путь от корневой директории сайта до кэша изображений, файлы в директории должны иметь публичный доступ для скачивания.
-     * @param null|string $public_work_path [optional] Публичный корневой каталог сайта.
-     * @param null|string $root_path [optional] Корневой каталог сайта.
-     */
-    function __construct($relative_path_for_cache = "/.fast_background", $public_work_path = null, $root_path = null)
+
+    function __construct(array $config)
     {
         //                echo(print_r($_SERVER));
         //        ini_set('display_errors', 1);
+
+        $relative_path_for_cache = $config['relative_path_for_cache'] ?? "/.fast_background";
+        $public_work_path = $config['public_work_path'] ?? null;
+        $root_path = $config['root_path'] ?? null;
+        $this->use_lock_file = $config['use_lock_file'] ?? false;
+        $this->clear_cache_time_filter = $config['clear_cache_time_filter'] ?? 30 * 24 * 60 * 60;
         $this->work_path = is_null($public_work_path) ? getcwd() : $public_work_path;
 
-        if(substr($this->work_path, 2, 1) === "\\")
+        if (substr($this->work_path, 2, 1) === "\\")
             $this->work_path = str_replace("\\", "/", $this->work_path);
 
         $this->cache_relative_path = $relative_path_for_cache;
@@ -23,13 +26,13 @@ class fast_background extends fast_background_tools
         $path_cache = $this->clear_slashes($path_cache);
         /*var_export($path_cache);
         exit();*/
-        if(!is_dir($path_cache))
+        if (!is_dir($path_cache))
             mkdir($path_cache, 0770);
         $this->path_cache = $path_cache;
         $root_path = !is_null($root_path) ? $root_path : $_SERVER["DOCUMENT_ROOT"];
         $root_path = str_replace("\\", "/", $root_path);
         $this->web_relative_path = str_replace($root_path, "", $this->work_path);
-        if(!empty($this->web_relative_path))
+        if (!empty($this->web_relative_path))
             $this->web_relative_path = '/' . $this->web_relative_path . '/';
         $this->web_relative_path = $this->clear_slashes($this->web_relative_path);
         /*var_export($this->work_path);
@@ -66,7 +69,7 @@ class fast_background extends fast_background_tools
     function request_proc()
     {
         $r = $this->get_request('fast_background');
-        if(is_null($r))
+        if (is_null($r))
             return;
 
         switch ($r) {
@@ -80,6 +83,7 @@ class fast_background extends fast_background_tools
                 break;
             case 'get_cached_url':
                 session_write_close();
+                $this->set_lock_file($r);
                 $url = $this->get_request('web_url', false);
                 $cover_size = $this->get_request('cover_size');
                 $cont_size = $this->get_request('cont_size');
@@ -91,6 +95,7 @@ class fast_background extends fast_background_tools
                 break;
             case 'get_cached_urls':
                 session_write_close();
+                $this->set_lock_file($r);
                 $urls = $this->get_request('web_url', false);
                 $cover_sizes = $this->get_request('cover_size', false);
                 $cont_sizes = $this->get_request('cont_size', false);
@@ -113,10 +118,10 @@ class fast_background extends fast_background_tools
 
                     try {
                         $cached_url = $this->get_url($url, $cover_size, $cont_size[0], $cont_size[1], $def_size, $end_type);
-                    } catch (Exception $e) {
+                    } catch (\Exception $e) {
                         error_log($e->getMessage() . " in " . $e->getLine() . ":" . $e->getFile());
                         $cached_url = "";
-                    } catch (Throwable $e) {
+                    } catch (\Throwable $e) {
                         error_log($e->getMessage() . " in " . $e->getLine() . ":" . $e->getFile());
                         $cached_url = "";
                     }
@@ -128,41 +133,44 @@ class fast_background extends fast_background_tools
         }
     }
 
+    private $clear_cache_time_filter = 0;
+
     /** Запускает очистку кэша на сервере, удаляя изображения старше значения $time_filter. (Очистка кэша может не запустится если в директории кэша
      * имеется файл блокировки который младше значения $time_filter)
      * @param float|int $time_filter [optional] Значение в секундах. По умолчанию 30 дней.
      */
-    function clear_cache($time_filter = 30 * 24 * 60 * 60)
+    function clear_cache()
     {
-        if($this->clear_cache_job($time_filter) !== -1)
+        $time_filter = $this->clear_cache_time_filter;
+        if ($this->clear_cache_job($time_filter) !== -1)
             clearstatcache(true);
     }
 
-    private function clear_cache_job($time_filter, $path = null)
+    private function clear_cache_job($time_filter, $path = null): int
     {
         $path_cache = $this->path_cache;
 
         $cur_time = time();
-        if(is_null($path)) {
+        if (is_null($path)) {
             ini_set('max_execution_time', 0);
             $time_lock_path = $path_cache . '/time_lock';
-            if(file_exists($time_lock_path) && bcsub($cur_time, filemtime($time_lock_path)) < $time_filter)
+            if (file_exists($time_lock_path) && bcsub($cur_time, filemtime($time_lock_path)) < $time_filter)
                 return -1;
 
             $this->save_to_text_file($time_lock_path, '', null);
         }
 
-        if(is_null($path))
+        if (is_null($path))
             $path = $path_cache . '/';
         $directory = opendir($path);
         $files_count = 0;
         while (false !== ($file = readdir($directory))) {
-            if($file != "." && $file != "..") {
+            if ($file != "." && $file != "..") {
                 $files_count++;
-                if(is_dir($path . $file))
+                if (is_dir($path . $file))
                     $files_count = $this->clear_cache_job($time_filter, $path . $file . "/");
                 else {
-                    if(bcsub($cur_time, filemtime($path . $file)) > $time_filter) {
+                    if (bcsub($cur_time, filemtime($path . $file)) > $time_filter) {
                         $files_count--;
                         unlink($path . $file);
                     }
@@ -171,11 +179,11 @@ class fast_background extends fast_background_tools
             }
         }
         closedir($directory);
-        if($files_count < 1)
+        if ($files_count < 1)
             try {
                 rmdir($path);
-            } catch (Exception $e) {
-            } catch (Throwable  $e) {
+            } catch (\Exception $e) {
+            } catch (\Throwable  $e) {
             }
         return $files_count;
     }
@@ -191,17 +199,17 @@ class fast_background extends fast_background_tools
      * 1 - использовать, если в кэше нет нужного размера<br>
      * 2 - использовать в любом случае<br>
      * 3 - Почти как 2, но вернет путь, только если изображение "по умолчанию" уже сформировано в кэше, иначе empty
-     * @param null|int $end_type Конечный формат изображения, поддерживаемые константы: IMAGETYPE_WEBP, IMAGETYPE_JPEG и IMAGETYPE_PNG
+     * @param int|null $end_type Конечный формат изображения, поддерживаемые константы: IMAGETYPE_WEBP, IMAGETYPE_JPEG и IMAGETYPE_PNG
      * @param int $size_limit Максимальный размер одной из сторон изображения для хранения в кэше.
      * @return null|string
-     * @throws exception
+     * @throws \exception
      */
-    function get_url($web_url, $cover_size = false, $cont_width = 0, $cont_height = 0, $def_size = 0, $end_type = null, $size_limit = 3840/*2X Full HD*/)
+    function get_url(string $web_url, bool $cover_size = false, int $cont_width = 0, int $cont_height = 0, int $def_size = 0, int $end_type = null, int $size_limit = 3840/*2X Full HD*/): ?string
     {
         $clone_et = $end_type;
 
         //        $is_debug = !!$this->get_request('debug');
-        if($web_url == "" || ($def_size!==3 && ($cont_width == 0 || $cont_width == null) && ($cont_height == 0 || $cont_height == null)))
+        if ($web_url == "" || ($def_size !== 3 && ($cont_width == 0 || $cont_width == null) && ($cont_height == 0 || $cont_height == null)))
             return null;
         $f_imagewebp_exist = function_exists('imagewebp');
         //        $f_imagewebp_exist = false;
@@ -209,11 +217,11 @@ class fast_background extends fast_background_tools
         $is_cwebp_use = $webp_use && !$f_imagewebp_exist;
 
 
-        if(!$webp_use)
+        if (!$webp_use)
             $end_type = null;
-        if($cont_width == 0 || $cont_width == null)
+        if ($cont_width == 0 || $cont_width == null)
             $cont_width = $cont_height;
-        if($cont_height == 0 || $cont_height == null)
+        if ($cont_height == 0 || $cont_height == null)
             $cont_height = $cont_width;
 
         $filename = $web_url;
@@ -222,7 +230,7 @@ class fast_background extends fast_background_tools
 
         //        header('dbg' . __LINE__ . ':+');
 
-        if(!file_exists($filename))
+        if (!file_exists($filename))
             return null;
 
         //        header('dbg' . __LINE__ . ':+');
@@ -230,9 +238,9 @@ class fast_background extends fast_background_tools
         $filemtime_filename = filemtime($filename);
         $cont_width = intval($cont_width);
         $cont_height = intval($cont_height);
-        if($cont_width < 1)
+        if ($cont_width < 1)
             $cont_width = $cont_height;
-        if($cont_height < 1)
+        if ($cont_height < 1)
             $cont_height = $cont_width;
 
 
@@ -242,10 +250,10 @@ class fast_background extends fast_background_tools
             //            header('dbg' . __LINE__ . ':+');
             $type = empty($end_type) ? $this->get_img_type($web_url) : $end_type;
             //            header('dbg' . __LINE__ . ':+');
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             //            header('dbg' . __LINE__ . ':+');
             return $this->web_relative_path . $web_url;
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             //            header('dbg' . __LINE__ . ':+');
             return $this->web_relative_path . $web_url;
         }
@@ -269,27 +277,31 @@ class fast_background extends fast_background_tools
         $img_width = $size_vars->width;
         $img_height = $size_vars->height;
 
-        if(!$img_width || !$img_height)
-             return $this->web_relative_path . $web_url;
+        if (!$img_width || !$img_height)
+            return $this->web_relative_path . $web_url;
 
         $img_max = $img_width;
-        if($img_height > $img_max)
+        if ($img_height > $img_max)
             $img_max = $img_height;
 
-        if($size_limit > $img_max)
+        if ($size_limit > $img_max)
             $size_limit = $img_max;
-        if($cont_width > $size_limit)
+        if ($cont_width > $size_limit)
             $cont_width = $size_limit;
-        if($cont_height > $size_limit)
+        if ($cont_height > $size_limit)
             $cont_height = $size_limit;
 
         $w_kof = $cont_width / $img_width;
         $h_kof = $cont_height / $img_height;
         $scale = $cover_size ? ($w_kof > $h_kof ? $w_kof : $h_kof) : ($w_kof < $h_kof ? $w_kof : $h_kof);
         $size = round($img_max * $scale);
-        if($size > $size_limit)
-            $size = $size_limit;
 
+        $skip_zone_size = 100;
+        $skip_zone_start = $size - ($size % $skip_zone_size) + $skip_zone_size;
+        $size = $skip_zone_start;
+
+        if ($size > $size_limit)
+            $size = $size_limit;
 
 
         $cache_img_name = sha1($web_url . $filemtime_filename) . "_{$type}_";
@@ -298,15 +310,17 @@ class fast_background extends fast_background_tools
 
         $path_cache = $this->path_cache;
         $path_cache .= "/" . $sub_dir;
-        if(!is_dir($path_cache))
+        if (!is_dir($path_cache))
             mkdir($path_cache, 0770);
         $path_cache .= "/" . $sub_dir2;
-        if(!is_dir($path_cache))
+        if (!is_dir($path_cache))
             mkdir($path_cache, 0770);
 
         $web_path_cache = $this->cache_relative_path . "/" . $sub_dir . "/" . $sub_dir2;
 
         $cache_img_name_ = $cache_img_name;
+
+
         $cache_img_name .= ($size) . $text_type;
         $web_url_cache_img = $web_path_cache . '/' . $cache_img_name;
         $web_url_img_default_path = $web_path_cache . '/' . ($this->is_mobile_device() ? "m_" : '') . "def_" . $cache_img_name_ . $text_type;
@@ -318,8 +332,7 @@ class fast_background extends fast_background_tools
 
         $default_min_size = $this->is_mobile_device() ? 1000 : 1500;
 
-        $skip_zone_size = 100;
-        $skip_zone_start = $size + ($size % $skip_zone_size);
+
         $link_start_file_name = $cache_filename_ . $skip_zone_start . '.txt';
 
         $is_cache_filename_reset = !file_exists($link_start_file_name) || !file_exists($this->work_path . "/" . $this->open_txt_file($link_start_file_name, null));
@@ -331,38 +344,38 @@ class fast_background extends fast_background_tools
           }*/
 
         $def_size_limit = ($size < $default_min_size) ? $size : $default_min_size;
-        if(!file_exists($img_default_path)) {
-            if($def_size !== 3) {
+        if (!file_exists($img_default_path)) {
+            if ($def_size !== 3) {
                 copy($filename, $img_default_path);
                 chmod($img_default_path, 0660);
-                $quality = fast_background_JPEG_QUALITY::MEDIUM;
-                $this->compressing_img($def_size_limit, $web_url_img_default_path, !$is_cwebp_use ? $type : null, !$is_cwebp_use ? $quality : fast_background_JPEG_QUALITY::HIGHEST);
-                if($is_cwebp_use)
+                $quality = JPEG_QUALITY::MEDIUM;
+                $this->compressing_img($def_size_limit, $web_url_img_default_path, !$is_cwebp_use ? $type : null, !$is_cwebp_use ? $quality : JPEG_QUALITY::HIGHEST);
+                if ($is_cwebp_use)
                     $this->cwebp($web_url_img_default_path, $quality);
             } else
                 return '';
         }
 
-        if($def_size === 2) {
+        if ($def_size === 2) {
             $fc_key = $web_url . ':' . $clone_et;
             $this->fc_set($fc_key, $web_url_img_default_path);
         }
 
-        if((($def_size === 1 && $is_cache_filename_reset) || $def_size === 2 || $def_size === 3) && file_exists($img_default_path))
+        if ((($def_size === 1 && $is_cache_filename_reset) || $def_size === 2 || $def_size === 3) && file_exists($img_default_path))
             return $this->web_relative_path . $web_url_img_default_path;
 
-        if($is_cache_filename_reset) {
+        if ($is_cache_filename_reset) {
             copy($filename, $cache_filename);
             chmod($cache_filename, 0660);
 
             $this->save_to_text_file($link_start_file_name, $web_url_cache_img, null);
 
             chmod($link_start_file_name, 0660);
-            $quality = fast_background_JPEG_QUALITY::HIGH;
+            $quality = JPEG_QUALITY::HIGH;
 
-            $this->compressing_img($size, $web_url_cache_img, !$is_cwebp_use ? $type : null, !$is_cwebp_use ? $quality : fast_background_JPEG_QUALITY::HIGHEST);
+            $this->compressing_img($size, $web_url_cache_img, !$is_cwebp_use ? $type : null, !$is_cwebp_use ? $quality : JPEG_QUALITY::HIGHEST);
 
-            if($is_cwebp_use)
+            if ($is_cwebp_use)
                 $this->cwebp($web_url_cache_img, $quality);
         } else
             $web_url_cache_img = $this->open_txt_file($link_start_file_name, null);
