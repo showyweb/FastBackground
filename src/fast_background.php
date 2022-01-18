@@ -11,7 +11,7 @@ class fb extends tools
         //                echo(print_r($_SERVER));
         //        ini_set('display_errors', 1);
 
-        $relative_path_for_cache = $config['relative_path_for_cache'] ?? "/.fast_background";
+        $relative_path_for_cache = '/' . $config['relative_path_for_cache'] ?? ".fast_background";
         $public_work_path = $config['public_work_path'] ?? null;
         $root_path = $config['root_path'] ?? null;
         $this->use_lock_file = $config['use_lock_file'] ?? false;
@@ -21,7 +21,7 @@ class fb extends tools
         if (substr($this->work_path, 2, 1) === "\\")
             $this->work_path = str_replace("\\", "/", $this->work_path);
 
-        $this->cache_relative_path = $relative_path_for_cache;
+        $this->cache_relative_path = $this->clear_slashes($relative_path_for_cache);
         $path_cache = $this->work_path . "/" . $this->cache_relative_path;
         $path_cache = $this->clear_slashes($path_cache);
         /*var_export($path_cache);
