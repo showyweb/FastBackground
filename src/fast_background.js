@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 7.0.3
+ * @version 7.0.4
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -645,8 +645,12 @@
             '@-ms-keyframes nodeInserted': sub_append_obj,
             '@-o-keyframes nodeInserted': sub_append_obj,
             '.fast_background': {
-                'animation-duration': '0.001s',
-                'animation-name': 'nodeInserted'
+                '&:after': {
+                    content: '""',
+                    visibility: 'hidden',
+                    'animation-duration': '0.001s',
+                    'animation-name': 'nodeInserted'
+                }
             }
         };
         fb.cssobj.obj = $.extend(fb.cssobj.obj, append_obj);
@@ -667,7 +671,8 @@
 
         function nodeInserted_handle() {
             // console.warn("nodeInserted!");
-            fast_background.update();
+            if (fb.stage_loaded !== -1)
+                fast_background.update();
         }
 
         //polyfill
@@ -1040,9 +1045,11 @@
                         break;
                 }
 
-                if (/*!ajax_work_not_minus &&*/ img_obj.hasClass('fb_ev_img_load'))
+                if (/*!ajax_work_not_minus &&*/ img_obj.hasClass('fb_ev_img_load')) {
+                    if (fb.is_debug_pws)
+                        console.warn('trigger fb_ev_img_load', url);
                     img_obj.trigger('fb_ev_img_load', [url]);
-
+                }
             } catch (e) {
                 console.warn(e.message);
             }
