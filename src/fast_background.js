@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 7.0.4
+ * @version 7.0.5
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -125,6 +125,7 @@
                 timeout = setTimeout(arguments.callee.bind(this, null, error_callback), fb.timeout_size);
                 return;
             }
+            is_first_call_fb_update = false;
             uc_skip = false;
             fb.update_is_worked = true;
 
@@ -597,7 +598,8 @@
             jpg: 2,
             png: 3,
             webp: 18
-        };
+        },
+        is_first_call_fb_update = true;
 
     $(function () {
         $(window).on('beforeunload.fast_background', function (e) {
@@ -671,7 +673,7 @@
 
         function nodeInserted_handle() {
             // console.warn("nodeInserted!");
-            if (fb.stage_loaded !== -1)
+            if (!is_first_call_fb_update)
                 fast_background.update();
         }
 
@@ -1243,6 +1245,7 @@
 
     var io_handler_t = null;
     var io_is_first_init = false;
+
 
     function io_handler(entry) {
         if (load_only_visible) {
