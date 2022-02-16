@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 7.0.6
+ * @version 7.1.0
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -628,110 +628,88 @@
             }
         });
 
-        if (fb.cssobj === null) {
-            fb.cssobj = cssobj({});
+        var mo_handler_timeout = null;
+        var mo_handler_timeout_size = 1;
+        var mo_handler_rs_timeout = null;
+
+        function mo_handler(mutationList, observer) {
+            clearTimeout(mo_handler_timeout);
+            mo_handler_timeout = setTimeout(function () {
+                console.log('mo_handler');
+                /* for (var i = 0; i < mutationList.length; i++) {
+                     var mle = mutationList[i];
+                     console.log(mle);
+                 }*/
+
+                if (!is_first_call_fb_update) {
+                    fast_background.update();
+                    /*if (!fast_background.update_is_worked) {
+                        clearTimeout(nodeInserted_fix_after_timeout);
+                        nodeInserted_fix_after_timeout = setTimeout(function () {
+                            fast_background.update();
+                        }, 1000);
+                    }*/
+                }
+            }, mo_handler_timeout_size);
+
+            if (mo_handler_timeout_size < 2000)
+                mo_handler_timeout_size += 500;
+
+            clearTimeout(mo_handler_rs_timeout);
+            mo_handler_rs_timeout = setTimeout(function () {
+                mo_handler_timeout_size = 1;
+            }, 3000)
         }
 
-        var sub_append_obj = {
-            'from': {
-                'outline-color': '#fff'
-            },
-            'to': {
-                'outline-color': '#000'
-            }
-        };
-        var append_obj = {
-            '@keyframes nodeInserted': sub_append_obj,
-            '@-moz-keyframes nodeInserted': sub_append_obj,
-            '@-webkit-keyframes nodeInserted': sub_append_obj,
-            '@-ms-keyframes nodeInserted': sub_append_obj,
-            '@-o-keyframes nodeInserted': sub_append_obj,
-            '.fast_background': {
-                '&:after': {
-                    content: '""',
-                    visibility: 'hidden',
-                    'animation-duration': '0.001s',
-                    'animation-name': 'nodeInserted'
-                }
-            }
-        };
-        fb.cssobj.obj = $.extend(fb.cssobj.obj, append_obj);
-        fb.cssobj.update();
+        var MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserve;
+        if (MutationObserver) {
+            var mo = new MutationObserver(mo_handler);
+            mo.observe(document.body, {
+                subtree: true,
+                childList: true,
+                attributes: true,
+                attributeFilter: ['class', 'style'],
+                characterData: false
+            });
+        } else //polyfill
+            (function () {
+                var fb_count = 0,
+                    display_not_none = 0,
+                    overflow_not_hidden = 0,
+                    _scrollWidth = 0;
+                var polyfill_ni_interval = setInterval(function () {
+                    // console.warn('polyfill process use');
+                    if (document.scrollingElement && document.scrollingElement.scrollWidth !== _scrollWidth) {
+                        _scrollWidth = document.scrollingElement.scrollWidth;
+                        mo_handler([], null);
+                        return true;
+                    }
 
-        var insertListener_timeout = null;
+                    var new_fb_count = $(".fast-background").length;
+                    if (new_fb_count !== fb_count) {
+                        fb_count = new_fb_count;
+                        mo_handler([], null);
+                        return true;
+                    }
 
-        function insertListener(event) {
-            if (event.animationName === "nodeInserted") {
-                clearTimeout(insertListener_timeout);
-                insertListener_timeout = setTimeout(nodeInserted_handle, 100);
-            }
-        }
+                    var new_display_not_none = 0;
+                    var new_overflow_not_hidden = 0;
 
-        document.addEventListener("animationstart", insertListener, false);
-        document.addEventListener("MSAnimationStart", insertListener, false);
-        document.addEventListener("webkitAnimationStart", insertListener, false);
-
-        var nodeInserted_fix_after_timeout = null;
-
-        function nodeInserted_handle() {
-            // console.warn("nodeInserted!");
-            if (!is_first_call_fb_update) {
-                fast_background.update();
-                if (!fast_background.update_is_worked) {
-                    clearTimeout(nodeInserted_fix_after_timeout);
-                    nodeInserted_fix_after_timeout = setTimeout(function () {
-                        fast_background.update();
-                    }, 1000);
-                }
-            }
-        }
-
-        //polyfill
-        (function () {
-            var fb_count = 0,
-                display_not_none = 0,
-                overflow_not_hidden = 0,
-                _scrollWidth = 0;
-            var polyfill_ni_interval = setInterval(function () {
-                if (insertListener_timeout !== null) {
-                    clearInterval(polyfill_ni_interval);
-                    // console.warn('polyfill process exit');
-                    return false;
-                }
-
-                // console.warn('polyfill process use');
-                if (document.scrollingElement && document.scrollingElement.scrollWidth !== _scrollWidth) {
-                    _scrollWidth = document.scrollingElement.scrollWidth;
-                    nodeInserted_handle();
-                    return true;
-                }
-
-                var new_fb_count = $(".fast-background").length;
-                if (new_fb_count !== fb_count) {
-                    fb_count = new_fb_count;
-                    nodeInserted_handle();
-                    return true;
-                }
-
-                var new_display_not_none = 0;
-                var new_overflow_not_hidden = 0;
-
-                $('*').each(function () {
-                    var _this = $(this);
-                    if (_this.css('display') !== 'none')
-                        new_display_not_none++;
-                    if (_this.css('overflow') !== 'hidden')
-                        new_overflow_not_hidden++;
-                });
-                if (new_display_not_none !== display_not_none || new_overflow_not_hidden !== overflow_not_hidden) {
-                    display_not_none = new_display_not_none;
-                    overflow_not_hidden = new_overflow_not_hidden;
-                    nodeInserted_handle();
-                    return true;
-                }
-            }, 2000);
-        })();
-
+                    $('.fast-background').each(function () {
+                        var _this = $(this);
+                        if (_this.css('display') !== 'none')
+                            new_display_not_none++;
+                        if (_this.css('overflow') !== 'hidden')
+                            new_overflow_not_hidden++;
+                    });
+                    if (new_display_not_none !== display_not_none || new_overflow_not_hidden !== overflow_not_hidden) {
+                        display_not_none = new_display_not_none;
+                        overflow_not_hidden = new_overflow_not_hidden;
+                        mo_handler([], null);
+                        return true;
+                    }
+                }, 2000);
+            })();
     });
 
 
@@ -973,7 +951,7 @@
             l_id = "#" + l_id;
 
         if (!l_id) {
-            l_id = img_obj.is('body') ? 'fb_body' : 'fb_' + Math.random().toString(36).substr(2, 9);
+            l_id = img_obj.is('body') ? 'fb_body' : 'fb_' + Math.random().toString(36).substring(2, 2 + 9);
             img_obj.attr('id', l_id);
             l_id = "#" + l_id;
         }
@@ -1255,7 +1233,6 @@
     var io_handler_t = null;
     var io_is_first_init = false;
 
-
     function io_handler(entry) {
         if (load_only_visible) {
             setTimeout(arguments.callee.bind(this, entry), 300);
@@ -1287,8 +1264,8 @@
                         var s_id = sel_a[0];
                         sel_a[0] = '';
                         var sel_p = sel_a.join('');
-                        if (sel_p.substr(0, 1) === ' ')
-                            sel_p = sel_p.substr(1);
+                        if (sel_p.substring(0, 1) === ' ')
+                            sel_p = sel_p.substring(1);
                         var p_el = jq_el.closest(s_id);
                         url = data_dyn_img_urls.get(p_el, sel_p);
                         if (is_valid_img_url(url))
@@ -1306,8 +1283,6 @@
          }*/
     }
 
-
     var io = 'IntersectionObserver' in window ? new IntersectionObserver(io_handler, {rootMargin: "0px 1000px " + (window_h + window_h / 2) + "px 1000px"}) : null;
-
 
 })();
