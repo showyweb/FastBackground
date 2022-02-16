@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 7.1.0
+ * @version 7.1.1
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -635,7 +635,7 @@
         function mo_handler(mutationList, observer) {
             clearTimeout(mo_handler_timeout);
             mo_handler_timeout = setTimeout(function () {
-                console.log('mo_handler');
+                // console.log('mo_handler');
                 /* for (var i = 0; i < mutationList.length; i++) {
                      var mle = mutationList[i];
                      console.log(mle);
