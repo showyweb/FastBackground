@@ -50,7 +50,7 @@ composer require showyweb/fast_background
 </html>
 ```
 ### Для максимальной производительности важно
-- Подключать JavaScript файлы FastBackground в тегах head
+- Подключать JavaScript файлы FastBackground в тегах head (без использования атрибутов async и defer)
 - Первый вызов `fast_background.update()` выполнять перед закрывающим тегом body
 - Использовать FastBackground для всех картинок на странице
 
