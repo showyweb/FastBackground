@@ -6,11 +6,13 @@ require_once "tools.php";
 class fb extends tools
 {
 
+    private $config = [];
+
     function __construct(array $config)
     {
         //                echo(print_r($_SERVER));
         //        ini_set('display_errors', 1);
-
+        $this->config = $config;
         $relative_path_for_cache = '/' . $config['relative_path_for_cache'] ?? ".fast_background";
         $public_work_path = $config['public_work_path'] ?? null;
         $root_path = $config['root_path'] ?? null;
@@ -193,23 +195,27 @@ class fb extends tools
      * @param bool $cover_size (Не обязательно, если $def_size=3) Рассчитать минимальный размер изображения таким образом, чтобы оно заполнило контейнер, если false, то чтобы вместилось.
      * @param int $cont_width (Не обязательно, если $def_size=3) Ширина контейнера в пикселях.
      * @param int $cont_height (Не обязательно, если $def_size=3) Высота контейнера в пикселях.
-     * @param int $def_size Вернуть изображение "по умолчанию" для первоначальной быстрой загрузки, если нужного нет в кэше. Изображение "по умолчанию" формируется при полном отсутствии его в кэше. (Для ПК максимальный размер одной из сторон равен 1500 пикс., для мобильных устройств 1000 пикс., частный размер может быть меньше если при формировании размеры контейнера меньше этих ограничений. При обновлении страницы в клиентском браузере, такое изображение уже не запрашивается, так как будет использоваться кэш браузера).
+     * @param int $def_size Вернуть изображение "по умолчанию" для первоначальной быстрой загрузки, если нужного нет в кэше. Изображение "по умолчанию" формируется при полном отсутствии его в кэше. (Для ПК максимальный размер одной из сторон равен 1500 пикс., для мобильных устройств 1000 пикс., частный размер может быть меньше если при формировании размеры контейнера меньше этих ограничений, но не меньше значения указанного аргументом $def_min_size_limit. При обновлении страницы в клиентском браузере, такое изображение уже не запрашивается, так как будет использоваться кэш браузера).
      *<br><br>
      * 0 - не использовать<br>
      * 1 - использовать, если в кэше нет нужного размера<br>
      * 2 - использовать в любом случае<br>
      * 3 - Почти как 2, но вернет путь, только если изображение "по умолчанию" уже сформировано в кэше, иначе empty
      * @param int|null $end_type Конечный формат изображения, поддерживаемые константы: IMAGETYPE_WEBP, IMAGETYPE_JPEG и IMAGETYPE_PNG
-     * @param int $size_limit Максимальный размер одной из сторон изображения для хранения в кэше.
      * @return null|string
      * @throws \exception
      */
-    function get_url(string $web_url, bool $cover_size = false, int $cont_width = 0, int $cont_height = 0, int $def_size = 0, int $end_type = null, int $size_limit = 3840/*2X Full HD*/): ?string
+    function get_url(string $web_url, bool $cover_size = false, int $cont_width = 0, int $cont_height = 0, int $def_size = 0, int $end_type = null): ?string
     {
+        $size_limit = $this->config['size_limit'] ?? 3840; //2X Full HD
+        $def_min_size_limit = $this->config['def_min_size_limit'] ?? 500;
+        $default_min_size = $this->config['default_min_size'] ?? 1500;
+        $default_mobile_min_size = $this->config['default_mobile_min_size'] ?? 1000;
+
         $clone_et = $end_type;
 
         //        $is_debug = !!$this->get_request('debug');
-        if ($web_url == "" || ($def_size !== 3 && ($cont_width == 0 || $cont_width == null) && ($cont_height == 0 || $cont_height == null)))
+        if ($web_url == "" || ($def_size !== 3 && $def_size !== 2 && ($cont_width == 0 || $cont_width == null) && ($cont_height == 0 || $cont_height == null)))
             return null;
         $f_imagewebp_exist = function_exists('imagewebp');
         //        $f_imagewebp_exist = false;
@@ -219,10 +225,6 @@ class fb extends tools
 
         if (!$webp_use)
             $end_type = null;
-        if ($cont_width == 0 || $cont_width == null)
-            $cont_width = $cont_height;
-        if ($cont_height == 0 || $cont_height == null)
-            $cont_height = $cont_width;
 
         $filename = $web_url;
         $filename = $this->work_path . "/" . $filename;
@@ -236,13 +238,6 @@ class fb extends tools
         //        header('dbg' . __LINE__ . ':+');
 
         $filemtime_filename = filemtime($filename);
-        $cont_width = intval($cont_width);
-        $cont_height = intval($cont_height);
-        if ($cont_width < 1)
-            $cont_width = $cont_height;
-        if ($cont_height < 1)
-            $cont_height = $cont_width;
-
 
         try {
             //            header('dbg' . __LINE__ . ':+');
@@ -276,6 +271,16 @@ class fb extends tools
 
         $img_width = $size_vars->width;
         $img_height = $size_vars->height;
+
+        if ($cont_width < 1 || is_null($cont_width))
+            $cont_width = $cont_height;
+        if ($cont_height < 1 || is_null($cont_height))
+            $cont_height = $cont_width;
+
+        if ($cont_width < 1 || is_null($cont_width))
+            $cont_width = $img_width;
+        if ($cont_height < 1 || is_null($cont_height))
+            $cont_height = $img_height;
 
         if (!$img_width || !$img_height)
             return $this->web_relative_path . $web_url;
@@ -330,7 +335,7 @@ class fb extends tools
         $cache_filename_ = $path_cache . '/' . $cache_img_name_;
         $cache_filename = $path_cache . '/' . $cache_img_name;
 
-        $default_min_size = $this->is_mobile_device() ? 1000 : 1500;
+        $default_min_size = !$this->is_mobile_device() ? $default_min_size : $default_mobile_min_size;
 
 
         $link_start_file_name = $cache_filename_ . $skip_zone_start . '.txt';
@@ -343,7 +348,12 @@ class fb extends tools
               echo "<br>";
           }*/
 
+
         $def_size_limit = ($size < $default_min_size) ? $size : $default_min_size;
+
+        if ($def_size_limit < $def_min_size_limit)
+            $def_size_limit = $def_min_size_limit;
+
         if (!file_exists($img_default_path)) {
             if ($def_size !== 3) {
                 copy($filename, $img_default_path);
