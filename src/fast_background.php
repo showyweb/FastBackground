@@ -205,7 +205,7 @@ class fb extends tools
      * @return null|string
      * @throws \exception
      */
-    function get_url(string $web_url, bool $cover_size = false, int $cont_width = 0, int $cont_height = 0, int $def_size = 0, int $end_type = null): ?string
+    function get_url(?string $web_url, bool $cover_size = false, int $cont_width = 0, int $cont_height = 0, int $def_size = 0, int $end_type = null): ?string
     {
         $size_limit = $this->config['size_limit'] ?? 3840; //2X Full HD
         $def_min_size_limit = $this->config['def_min_size_limit'] ?? 500;

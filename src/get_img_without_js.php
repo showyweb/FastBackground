@@ -7,7 +7,7 @@ if (!function_exists('fb_cache')) {
      * @return string Возвращает относительный путь до изображения в кэше
      * @throws exception
      */
-    function fb_cache(string $img_web_url, bool $force = true, ?int $max_size = null): ?string
+    function fb_cache(?string $img_web_url, bool $force = true, ?int $max_size = null): ?string
     {
         /** @var \showyweb\fast_background\fb $fast_background_obj */
         global $fast_background_obj;
