@@ -14,7 +14,7 @@ FastBackground - это интеллектуальный JavaScript загруз
 - В composer.json добавьте
 ```json
 "scripts": {
-    "post-autoload-dump": [
+    "pre-autoload-dump": [
       "@php vendor/showyweb/fast_background/src/istall_assets.php public/js"
     ]
 }
