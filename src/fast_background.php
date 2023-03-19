@@ -12,10 +12,10 @@ class fb extends tools
     {
         //                echo(print_r($_SERVER));
         //        ini_set('display_errors', 1);
+        $config['use_exec'] = $config['use_exec'] ?? true;
         $this->config = $config;
         $relative_path_for_cache = '/' . $config['relative_path_for_cache'] ?? ".fast_background";
         $public_work_path = $config['public_work_path'] ?? null;
-        $root_path = $config['root_path'] ?? null;
         $this->use_lock_file = $config['use_lock_file'] ?? false;
         $this->clear_cache_time_filter = $config['clear_cache_time_filter'] ?? 30 * 24 * 60 * 60;
         $this->work_path = is_null($public_work_path) ? getcwd() : $public_work_path;
@@ -26,28 +26,13 @@ class fb extends tools
         $this->cache_relative_path = $this->clear_slashes($relative_path_for_cache);
         $path_cache = $this->work_path . "/" . $this->cache_relative_path;
         $path_cache = $this->clear_slashes($path_cache);
-        /*var_export($path_cache);
-        exit();*/
+
         if (!is_dir($path_cache))
             mkdir($path_cache, 0770);
         $this->path_cache = $path_cache;
-        $root_path = !is_null($root_path) ? $root_path : $_SERVER["DOCUMENT_ROOT"];
-        $root_path = str_replace("\\", "/", $root_path);
-        /*$this->web_relative_path = str_replace($root_path, "", $this->work_path);
-        if (!empty($this->web_relative_path))
-            $this->web_relative_path = '/' . $this->web_relative_path . '/';
-        $this->web_relative_path = $this->clear_slashes($this->web_relative_path);*/
-        /*var_export($this->work_path);
-        echo "<br>";
-        var_export($this->path_cache);
-        echo "<br>";
-        var_export($this->web_relative_path);
-        echo "<br>";
-        var_export($root_path);
-        echo "<br>";*/
-        //         exit();
 
-        parent::__construct();
+
+        parent::__construct($this->config['use_exec']);
     }
 
 
@@ -85,7 +70,7 @@ class fb extends tools
                 break;
             case 'get_cached_url':
                 session_write_close();
-                $this->set_lock_file($r);
+                $this->set_lock_file($r . crc32($_SERVER['REMOTE_ADDR'] ?? ''));
                 $url = $this->get_request('web_url', false);
                 $cover_size = $this->get_request('cover_size');
                 $cont_size = $this->get_request('cont_size');
@@ -97,7 +82,7 @@ class fb extends tools
                 break;
             case 'get_cached_urls':
                 session_write_close();
-                $this->set_lock_file($r);
+                $this->set_lock_file($r . crc32($_SERVER['REMOTE_ADDR'] ?? ''));
                 $urls = $this->get_request('web_url', false);
                 $cover_sizes = $this->get_request('cover_size', false);
                 $cont_sizes = $this->get_request('cont_size', false);
@@ -195,7 +180,7 @@ class fb extends tools
      * @param bool $cover_size (Не обязательно, если $def_size=3) Рассчитать минимальный размер изображения таким образом, чтобы оно заполнило контейнер, если false, то чтобы вместилось.
      * @param int $cont_width (Не обязательно, если $def_size=3) Ширина контейнера в пикселях.
      * @param int $cont_height (Не обязательно, если $def_size=3) Высота контейнера в пикселях.
-     * @param int $def_size Вернуть изображение "по умолчанию" для первоначальной быстрой загрузки, если нужного нет в кэше. Изображение "по умолчанию" формируется при полном отсутствии его в кэше. (Для ПК максимальный размер одной из сторон равен 1500 пикс., для мобильных устройств 1000 пикс., частный размер может быть меньше если при формировании размеры контейнера меньше этих ограничений, но не меньше значения указанного аргументом $def_min_size_limit. При обновлении страницы в клиентском браузере, такое изображение уже не запрашивается, так как будет использоваться кэш браузера).
+     * @param int $def_size Вернуть изображение "по умолчанию" для первоначальной быстрой загрузки, если нужного нет в кэше. Изображение "по умолчанию" формируется при полном отсутствии его в кэше (размер одной из сторон равен 1500 пикс., частный размер может быть меньше если при формировании размеры контейнера меньше этих ограничений, но не меньше значения указанного аргументом $def_min_size_limit. При обновлении страницы в клиентском браузере, такое изображение уже не запрашивается, так как будет использоваться кэш браузера).
      *<br><br>
      * 0 - не использовать<br>
      * 1 - использовать, если в кэше нет нужного размера<br>
@@ -210,7 +195,7 @@ class fb extends tools
         $size_limit = $this->config['size_limit'] ?? 3840; //2X Full HD
         $def_min_size_limit = $this->config['def_min_size_limit'] ?? 500;
         $default_min_size = $this->config['default_min_size'] ?? 1500;
-        $default_mobile_min_size = $this->config['default_mobile_min_size'] ?? 1000;
+
 
         $clone_et = $end_type;
 
@@ -221,7 +206,8 @@ class fb extends tools
         //        $f_imagewebp_exist = false;
         $webp_use = $end_type === IMAGETYPE_WEBP;
         $is_cwebp_use = $webp_use && !$f_imagewebp_exist;
-
+        if ($is_cwebp_use && !$this->config['use_exec'])
+            $webp_use = false;
 
         if (!$webp_use)
             $end_type = null;
@@ -243,7 +229,12 @@ class fb extends tools
             //            header('dbg' . __LINE__ . ':+');
             $size_vars = $this->get_size($web_url);
             //            header('dbg' . __LINE__ . ':+');
-            $type = empty($end_type) ? $this->get_img_type($web_url) : $end_type;
+            if (empty($end_type)) {
+                $type = $this->get_img_type($web_url);
+                if ($type === IMAGETYPE_WEBP && !$webp_use)
+                    return $this->web_relative_path . $web_url;
+            } else
+                $type = $end_type;
             //            header('dbg' . __LINE__ . ':+');
         } catch (\Exception $e) {
             //            header('dbg' . __LINE__ . ':+');
@@ -328,15 +319,12 @@ class fb extends tools
 
         $cache_img_name .= ($size) . $text_type;
         $web_url_cache_img = $web_path_cache . '/' . $cache_img_name;
-        $web_url_img_default_path = $web_path_cache . '/' . ($this->is_mobile_device() ? "m_" : '') . "def_" . $cache_img_name_ . $text_type;
+        $web_url_img_default_path = $web_path_cache . "/def_" . $cache_img_name_ . $text_type;
         $img_default_path = $this->work_path . "/" . $web_url_img_default_path;
         $img_default_path = $this->clear_slashes($img_default_path);
 
         $cache_filename_ = $path_cache . '/' . $cache_img_name_;
         $cache_filename = $path_cache . '/' . $cache_img_name;
-
-        $default_min_size = !$this->is_mobile_device() ? $default_min_size : $default_mobile_min_size;
-
 
         $link_start_file_name = $cache_filename_ . $skip_zone_start . '.txt';
 
@@ -354,7 +342,7 @@ class fb extends tools
         if ($def_size_limit < $def_min_size_limit)
             $def_size_limit = $def_min_size_limit;
 
-        if (!file_exists($img_default_path)) {
+        if ($def_size !== 0 && ($is_cache_filename_reset || in_array($def_size, [2, 3], true)) && !file_exists($img_default_path)) {
             if ($def_size !== 3) {
                 copy($filename, $img_default_path);
                 chmod($img_default_path, 0660);

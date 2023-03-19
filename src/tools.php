@@ -23,9 +23,12 @@ class tools
     private $fc_file = null;
     private $fc_is_modified = false;
 
-    function __construct()
+    private $use_exec;
+
+    function __construct($use_exec)
     {
         $this->set_lock_file();
+        $this->use_exec = $use_exec;
     }
 
     private function fc_init()
@@ -316,6 +319,7 @@ class tools
 
     protected $use_lock_file = false;
     private $lock_file = null;
+
     protected function set_lock_file($prefix = '')
     {
         if (!$this->use_lock_file)
@@ -393,7 +397,7 @@ class tools
             if ($imgInfo[0] == 0 || $imgInfo[1] == 0)
                 $this->error('Вы пытаетесь обработать не поддерживаемый формат файла, загрузить возможно только изображения в формате jpg, jpeg, png и webp…');
             $max_php_image_size = 3840;
-            if ($width > $max_php_image_size || $height > $max_php_image_size) {
+            if (($width > $max_php_image_size || $height > $max_php_image_size) && $this->use_exec) {
                 $exec_file_name = escapeshellarg($filename);
                 $cur_img_type = null;
                 switch ($imgInfo[2]) {
@@ -582,6 +586,8 @@ class tools
 
     function cwebp($web_url, $quality)
     {
+        if (!$this->use_exec)
+            return null;
         $filename = null;
         try {
             $this->lock();

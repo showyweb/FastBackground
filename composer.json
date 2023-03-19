@@ -11,7 +11,10 @@
     ],
     "minimum-stability": "stable",
     "require": {
-        "php": ">=7.1.0"
+        "php": ">=7.1.0",
+        "ext-gd": "*",
+        "ext-mbstring": "*",
+        "ext-exif": "*"
     },
     "autoload": {
         "classmap": [
