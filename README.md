@@ -7,9 +7,11 @@ FastBackground - это интеллектуальный JavaScript загруз
  - Fast Background в процессе загрузки страницы автоматически рассчитает оптимальный размер изображения на основе размера контейнера, плотности пикселей и CSS свойства background-size и создаст версию в кэше на вашем сервере, в котором старые изображения в зависимости от настроек периодически будут удаляться. 
  - Также для предотвращения задержки используется двухуровневое кэширование на стороне веб-браузера, если оптимальный размер изображения уже был раннее загружен.
 # Необходимое  ПО
- - [PHP => 7.1](http://php.net/) 
+ - [PHP => 7.1 (ext-gd, ext-mbstring, ext-exif)](http://php.net/) 
  - [jQuery => 2.X](https://jquery.com/)
  - [CSSOBJ  => 1.1.2](https://github.com/cssobj/cssobj#cssobj-) 
+ - [ImageMagick => 6.9.7-4 Q16](http://www.imagemagick.org)
+ - [cwebp => 0.6.1](https://developers.google.com/speed/webp/docs/cwebp)
 # Установка
 - В composer.json добавьте
 ```json
