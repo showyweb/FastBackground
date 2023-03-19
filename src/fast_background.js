@@ -640,36 +640,17 @@
         });
 
         var mo_handler_timeout = null;
-        var mo_handler_timeout_size = 1;
-        var mo_handler_rs_timeout = null;
+        var mo_handler_timeout_size = 100;
 
         function mo_handler(mutationList, observer) {
             clearTimeout(mo_handler_timeout);
             mo_handler_timeout = setTimeout(function () {
-                // console.log('mo_handler');
-                /* for (var i = 0; i < mutationList.length; i++) {
-                     var mle = mutationList[i];
-                     console.log(mle);
-                 }*/
 
                 if (!is_first_call_fb_update) {
                     fast_background.update();
-                    /*if (!fast_background.update_is_worked) {
-                        clearTimeout(nodeInserted_fix_after_timeout);
-                        nodeInserted_fix_after_timeout = setTimeout(function () {
-                            fast_background.update();
-                        }, 1000);
-                    }*/
+
                 }
             }, mo_handler_timeout_size);
-
-            if (mo_handler_timeout_size < 2000)
-                mo_handler_timeout_size += 500;
-
-            clearTimeout(mo_handler_rs_timeout);
-            mo_handler_rs_timeout = setTimeout(function () {
-                mo_handler_timeout_size = 1;
-            }, 3000)
         }
 
         var MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserve;
