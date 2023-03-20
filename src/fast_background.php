@@ -70,9 +70,7 @@ class fb extends tools
                 break;
             case 'get_cached_url':
                 session_write_close();
-                $time = time();
-                $time -= $time % 2;
-                $this->set_lock_file($r . crc32($_SERVER['REMOTE_ADDR'] ?? '') . '_' . $time);
+                $this->set_lock_file($r . crc32($_SERVER['REMOTE_ADDR'] ?? '') . '_' . time());
                 $url = $this->get_request('web_url', false);
                 $cover_size = $this->get_request('cover_size');
                 $cont_size = $this->get_request('cont_size');
@@ -84,7 +82,7 @@ class fb extends tools
                 break;
             case 'get_cached_urls':
                 session_write_close();
-                $this->set_lock_file($r . crc32($_SERVER['REMOTE_ADDR'] ?? ''));
+                $this->set_lock_file($r . crc32($_SERVER['REMOTE_ADDR'] ?? '') . '_' . time());
                 $urls = $this->get_request('web_url', false);
                 $cover_sizes = $this->get_request('cover_size', false);
                 $cont_sizes = $this->get_request('cont_size', false);

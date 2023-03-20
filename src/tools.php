@@ -340,7 +340,7 @@ class tools
                     unlink($lock_file);
                     break;
                 } else {
-                    sleep(1);
+                    usleep(100 * 1000);
                 }
             }
             $this->save_to_text_file($lock_file, '', null);
