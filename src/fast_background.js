@@ -180,6 +180,10 @@
                                 last_update_callbacks[j]();
                             last_update_callbacks = [];
                             fb.update_is_worked = false;
+                            if (load_only_visible){
+                                load_only_visible = false;
+                                fb.update();
+                            }
                             break;
                     }
                 }
@@ -1235,8 +1239,10 @@
             }, function () {
                 error_load_img_c(jq_el, c_key);
             });
-        } else if (io)
+        } else if (io) {
+            fb.update();
             io.unobserve(jq_el[0]);
+        }
     }
 
     var io_handler_t = null;
