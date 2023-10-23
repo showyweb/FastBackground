@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 7.2.3
+ * @version 7.2.4
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -180,7 +180,7 @@
                                 last_update_callbacks[j]();
                             last_update_callbacks = [];
                             fb.update_is_worked = false;
-                            if (load_only_visible){
+                            if (load_only_visible) {
                                 load_only_visible = false;
                                 fb.update();
                             }
@@ -597,8 +597,13 @@
                 // if (cached_key.indexOf('r64_glyph8-min2') !== -1)
                 //     debugger;
                 this.data[cached_key] = curl;
-                if (browser.isLocalStorageSupported && fb.use_local_storage)
-                    localStorage.setItem(cached_key, curl);
+                if (browser.isLocalStorageSupported && fb.use_local_storage) {
+                    try {
+                        localStorage.setItem(cached_key, curl);
+                    } catch (e) {
+                        localStorage.clear();
+                    }
+                }
             },
             del: function (cached_key) {
                 if (!this.data[cached_key])
