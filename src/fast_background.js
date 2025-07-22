@@ -1,6 +1,6 @@
 /**
  * @overview FastBackground https://github.com/showyweb/FastBackground
- * @version 7.2.5
+ * @version 7.2.6
  * @author  Novojilov Pavel Andreevich (The founder of the library)
  * @license MIT license. http://www.opensource.org/licenses/mit-license.php
  * @copyright (c) 2017 Pavel Novojilov
@@ -457,7 +457,7 @@
                             tmp_height = 0;
                         //console.log("cover "+cover_size+' tmp_size '+ tmp_size+' size '+size+' url '+img_obj.attr('data-url'));
 
-                        if (width <= tmp_width && height <= tmp_height && !img_obj_.hasClass('fb_dynamic_url')) {
+                        if (width && height && width <= tmp_width && height <= tmp_height && !img_obj_.hasClass('fb_dynamic_url')) {
                             save_c_url = get_f(img_obj_, fb_selector);
                             save_c_url = save_c_url.replace(" !important", "");
                             if (is_valid_img_url(save_c_url)) {
